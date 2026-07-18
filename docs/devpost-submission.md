@@ -32,41 +32,37 @@ Work & Productivity
 
 Store owners rarely lack data. They lack one trusted answer to a much smaller morning question: what should I fix today?
 
-Orders, returns, reviews, support tickets, and product-page copy usually live in separate tools. Community discussions from ecommerce operators repeatedly describe hidden margin pressure, vague return reasons, sizing confusion, and product promises that do not match the buying experience. The workaround is often a spreadsheet plus hours of manual reading.
+Orders, returns, reviews, support tickets, and product-page copy usually live in separate tools. Connecting them often means a spreadsheet plus hours of manual reading—after the margin has already leaked.
 
-We built CartCause to close the gap between a report and an operational decision.
+We built CartCause to close the gap between a report and an operational decision: one evidence-backed change an owner can review before lunch.
 
 ### What it does
 
-CartCause creates a daily profit-leak brief for a founder-led ecommerce store.
+CartCause creates a daily profit-leak brief for founder-led ecommerce stores.
 
-The demo opens on fictional sample data for Morrow Supply. It shows three precomputed leak candidates: a running shoe with a fit expectation gap, a weekender bag with a laptop-compartment mismatch, and a linen set with unclear dispatch timing.
+The demo opens with Morrow Supply, a clearly labeled fictional store. It surfaces three product-level leak candidates and brings the supporting returns, reviews, support notes, and product promises into one workspace.
 
-GPT-5.6 ranks those candidates, forms bounded cause hypotheses, selects the exact return, review, support, and product-page evidence IDs behind each one, and drafts approval-ready changes. Every proposed fix carries its own evidence IDs. The owner can inspect the evidence, compare before and after copy, approve a fix, and download a structured human-review handoff.
+GPT-5.6 ranks the candidates, forms bounded cause hypotheses, identifies the evidence behind each one, and drafts approval-ready product and CX changes. The owner can inspect every source, compare before and after copy, approve a fix, and download a structured handoff for human review.
 
-The no-setup demo also includes a real normalized ingestion path: one click loads a fictional 14-column CSV template, the browser parses and validates it, recomputes return rates, and shows the candidate/evidence count. The raw file is never uploaded. Leakage estimates are labeled as unverified user inputs. After explicit redaction confirmation, its normalized fields can power the optional live request.
+The complete brief, evidence, and approval loop works without a key. A one-click fictional CSV template also demonstrates how a normalized evidence packet can enter the workflow locally in the browser.
 
 CartCause is not a chatbot or another broad dashboard. It is one daily loop: brief, evidence, approve.
 
 ### How we built it
 
-The web app uses Vite, React, TypeScript, Tailwind CSS v4, Motion, and Phosphor Icons. A Vercel Function exposes `/api/analyze` and calls the OpenAI Responses API with `gpt-5.6`, medium reasoning, `store: false`, and Zod Structured Outputs.
+The web app uses Vite, React, TypeScript, Tailwind CSS v4, Motion, and Phosphor Icons. A Vercel Function calls the OpenAI Responses API with GPT-5.6 and Zod Structured Outputs.
 
-The model never calculates the financial values shown in the interface. Estimated leakage is excluded from model input. The server binds `seeded_sample` to the exact known fictional dataset, labels every CSV packet `untrusted_normalized_csv`, verifies that return rate exactly matches `returns / orders`, requires a fictional/redacted and no-raw-file client attestation, and keeps money out of the model schema. After the response, it checks that every candidate appears exactly once, ranks are unique, every leak reference belongs to the correct candidate, and every fix cites only evidence already supporting its parent leak. Invalid references fail closed.
+GPT-5.6 handles the semantic synthesis—ranking candidates, connecting qualitative evidence, and drafting grounded fixes—while CartCause keeps the provided financial values outside model-authored output. Structured responses are validated before they reach the evidence and approval experience.
 
-The default public UI sends only fictional Morrow Supply data. The optional importer accepts a bounded normalized CSV and requires a fictional/redacted-data acknowledgement; it is not a PII detector. The function converts the browser's random session ID into a pseudonymous hashed safety identifier and excludes the raw ID from the model input. A live API failure never disguises sample data as model output.
+CartCause starts with fictional sample data and can optionally normalize a fictional or redacted CSV locally in the browser. The raw CSV file is not uploaded. The optional live path uses a user-provided OpenAI API key for the requested analysis and does not persist it in CartCause app storage or a database.
 
-The public deployment uses a request-scoped bring-your-own-key flow. A key is held in React memory for the active tab, sent over HTTPS to the same-origin function for one OpenAI request, and cleared from the form before the fetch starts. CartCause application code does not write it to browser storage, cookies, the JSON body, a database, responses, or Vercel environment variables. The browser, serverless function, network path, and OpenAI necessarily process it transiently, so we tell evaluators to use a dedicated restricted key and revoke it after testing.
-
-The file picker reads and validates the documented CSV schema locally. It rejects duplicate IDs, inconsistent metrics, unsupported evidence types, invalid bounds, and oversized packets. The raw file is never uploaded; only validated normalized fields can enter a confirmed live request. Real customer data, credentials, payment data, and full exports must not be used in this prototype.
-
-CartCause sets `store: false`, which opts the request out of retrievable Responses application-state storage. It does not disable OpenAI's default abuse-monitoring logs. OpenAI states that API data is not used for training unless the API customer opts in, while abuse-monitoring data may generally be retained for up to 30 days under the project owner's data controls. The repository's detailed [security and data use guide](https://github.com/himomohi/cartcause/blob/master/docs/security-and-data.md) links the official policies and documents the complete request path.
+Only normalized fields can enter an intentional live request, which uses `store: false`. Suggested fixes remain approval-only drafts and are never auto-published. Full testing and data-use guidance remains available in the repository for evaluators who want the implementation detail.
 
 The editorial campaign visual was produced with the built-in ImageGen tool and integrated into the actual product experience.
 
 ### How we used Codex
 
-Codex was the primary build and coordination environment. We started from an empty project during Build Week. Codex inspected the official rules and Devpost form, researched current ecommerce-owner discussions, compared product wedges, coordinated bounded research/product/frontend/API/design agents, implemented and integrated the app, ran the test and browser loops, and prepared the deployment and submission assets.
+Codex was the primary build and coordination environment. We started from an empty project during Build Week. Codex helped research ecommerce-owner pain points, compare product directions, coordinate implementation and review work, run test and browser loops, and prepare the deployment and submission assets.
 
 The key human decision was the product pivot: move away from a developer tool and build a distinctive ecommerce operating brief for store owners. Human direction also set the trust boundary that financial inputs must stay outside model inference, imported estimates must be labeled, and recommendations must remain approval-only.
 
@@ -74,7 +70,7 @@ The key human decision was the product pivot: move away from a developer tool an
 
 The hardest design problem was avoiding two familiar failure modes: a generic analytics dashboard and an AI copy generator. We narrowed the unit of value to one daily decision and made evidence references part of the primary UI.
 
-The hardest technical problem was separating provided financial metrics from model inference. Structured Outputs solved shape, but shape alone was not enough. We added source-provenance checks, application-level reference validation, and a no-money response boundary.
+The hardest technical problem was separating provided financial metrics from model inference. Structured Outputs solved the response shape; the product still needed to ensure each recommendation stayed connected to the evidence shown to the owner.
 
 We also caught a desktop breakpoint that squeezed the evidence story into unreadable strips, then rebuilt the lead composition as an editorial owner brief and reverified it in the browser.
 
@@ -83,17 +79,17 @@ We also caught a desktop breakpoint that squeezed the evidence story into unread
 - GPT-5.6 performs the central semantic synthesis instead of appearing as a chat add-on.
 - Every model-supported hypothesis maps to visible evidence IDs.
 - Every proposed fix shows the exact evidence IDs that support it.
-- Financial arithmetic cannot be invented by the model response.
+- Provided financial values stay separate from model-authored recommendations.
 - The demo remains honest and useful if the live API is unavailable.
 - A store owner can move from a normalized evidence packet to an approved JSON handoff in a single coherent flow.
 
 ### What we learned
 
-Structured output is only the first trust layer. Products also need semantic validation for identity, ownership, and claims. We learned that an AI product feels more useful when the model boundary is visible and the experience ends with a controlled human decision.
+Structured output is only the first trust layer. We learned that an AI product feels more useful when its evidence is visible, its limits are understandable, and the experience ends with a controlled human decision.
 
 ### What's next for CartCause
 
-The next step is a read-only Shopify connector for this normalized contract, followed by a human-reviewed draft action in a storefront or CX tool. We would add measurement only after the owner approval loop is proven. Auto-publishing, broad analytics, and unsupported ROI claims remain intentionally out of scope.
+The next step is a read-only Shopify connector feeding the same daily brief, followed by a human-reviewed draft action in a storefront or CX tool. We would add outcome measurement only after the approval loop is proven.
 
 ## Testing instructions
 
