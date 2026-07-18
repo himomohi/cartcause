@@ -114,7 +114,7 @@ export function FixStudio({
                 <button
                   type="button"
                   onClick={() => onApprove(fix)}
-                  className="inline-flex items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--acid)_42%,transparent)] bg-[color:color-mix(in_srgb,var(--acid)_16%,transparent)] px-4 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[color:color-mix(in_srgb,var(--acid)_22%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--acid)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--acid)_42%,transparent)] bg-[color:color-mix(in_srgb,var(--acid)_16%,transparent)] px-4 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[color:color-mix(in_srgb,var(--acid)_22%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--acid)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
                 >
                   <CheckCircle size={18} aria-hidden="true" />
                   Approve fix
@@ -122,7 +122,7 @@ export function FixStudio({
                 <button
                   type="button"
                   onClick={() => onReject(fix)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-semibold text-[var(--ink-soft)] transition hover:border-white/20 hover:text-[var(--paper)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--paper)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-semibold text-[var(--ink-soft)] transition hover:border-white/20 hover:text-[var(--paper)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--paper)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
                 >
                   <XCircle size={18} aria-hidden="true" />
                   Remove

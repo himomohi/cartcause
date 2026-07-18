@@ -100,6 +100,6 @@ The displayed financial values are fictional sample metrics. The live model resp
 ## URLs to complete
 
 - Live app:
-- Public repository:
+- Public repository: https://github.com/himomohi/cartcause
 - Public YouTube demo:
 - Primary Codex `/feedback` Session ID:
