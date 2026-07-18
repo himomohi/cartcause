@@ -1,11 +1,12 @@
-import { CheckCircle } from "@phosphor-icons/react";
+import { CheckCircle, DownloadSimple } from "@phosphor-icons/react";
 import type { ApprovedFixRecord } from "./FixStudio";
 
 interface ApprovedTrayProps {
   items: ApprovedFixRecord[];
+  onExport: () => void;
 }
 
-export function ApprovedTray({ items }: ApprovedTrayProps) {
+export function ApprovedTray({ items, onExport }: ApprovedTrayProps) {
   return (
     <section
       aria-labelledby="approved-today-title"
@@ -56,6 +57,19 @@ export function ApprovedTray({ items }: ApprovedTrayProps) {
           ))}
         </ul>
       )}
+
+      <button
+        type="button"
+        onClick={onExport}
+        disabled={items.length === 0}
+        className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--acid)_36%,transparent)] bg-[color:color-mix(in_srgb,var(--acid)_12%,transparent)] px-4 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[color:color-mix(in_srgb,var(--acid)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--acid)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
+      >
+        <DownloadSimple size={18} aria-hidden="true" />
+        Download approved patch bundle
+      </button>
+      <p className="mt-2 text-xs leading-5 text-[var(--ink-soft)]">
+        JSON handoff only. CartCause never publishes changes automatically.
+      </p>
     </section>
   );
 }

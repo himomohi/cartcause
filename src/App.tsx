@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDown,
   ArrowClockwise,
   ChartLine,
   ClockCountdown,
@@ -33,9 +34,16 @@ import {
   type AnalyzeResponse,
   type LiveState,
   type RecommendedFix,
+  type LeakCandidate,
+  type StoreProfile,
 } from "./data/cartCause";
+import {
+  MAX_CARTCAUSE_IMPORT_BYTES,
+  parseCartCauseCsv,
+  type CartCauseImport,
+} from "./lib/cartcause-import";
 
-interface UploadPreviewState {
+interface UploadPreviewState extends CartCauseImport {
   name: string;
   sizeLabel: string;
 }
@@ -117,19 +125,41 @@ export default function App() {
     useState<AnalyzeResponse>(sampleAnalysisResponse);
   const [liveState, setLiveState] = useState<LiveState>("sample");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeStore, setActiveStore] = useState<StoreProfile>(sampleStore);
+  const [activeCandidates, setActiveCandidates] =
+    useState<LeakCandidate[]>(sampleCandidates);
+  const [activeDataSource, setActiveDataSource] = useState<"sample" | "imported">(
+    "sample",
+  );
   const [selectedLeakId, setSelectedLeakId] = useState(sampleCandidates[0]?.id ?? "");
   const [approvedRecords, setApprovedRecords] = useState<Record<string, ApprovedFixRecord>>({});
   const [uploadPreview, setUploadPreview] = useState<UploadPreviewState | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [redactionConfirmed, setRedactionConfirmed] = useState(false);
   const [copiedBrief, setCopiedBrief] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const apiKeyInputRef = useRef<HTMLInputElement>(null);
+  const redactionInputRef = useRef<HTMLInputElement>(null);
   const [briefDate] = useState(sampleBriefMeta.briefDate);
   const [clientSessionId] = useState(readSessionId);
 
   const mergedLeaks = useMemo(
-    () => mergeRankedLeaks(sampleCandidates, analysisResponse),
-    [analysisResponse],
+    () => mergeRankedLeaks(activeCandidates, analysisResponse),
+    [activeCandidates, analysisResponse],
+  );
+
+  const activeMetrics = useMemo(
+    () =>
+      activeCandidates.reduce(
+        (totals, candidate) => ({
+          orders: totals.orders + candidate.computed.orders,
+          leakageCents:
+            totals.leakageCents + candidate.computed.estimatedLeakageCents,
+        }),
+        { orders: 0, leakageCents: 0 },
+      ),
+    [activeCandidates],
   );
 
   const selectedLeak =
@@ -198,12 +228,30 @@ export default function App() {
       return;
     }
 
+    if (uploadPreview && !redactionConfirmed) {
+      setLiveState("error");
+      setErrorMessage(
+        "Confirm that the imported packet is fictional or redacted before sending it.",
+      );
+      window.requestAnimationFrame(() => redactionInputRef.current?.focus());
+      return;
+    }
+
     setLiveState("analyzing");
     setErrorMessage(null);
 
     try {
       const requestHeaders = buildAnalyzeRequestHeaders(apiKey);
-      const requestBody = JSON.stringify(buildAnalyzeRequest(clientSessionId, briefDate));
+      const request = buildAnalyzeRequest(
+        clientSessionId,
+        briefDate,
+        uploadPreview?.store ?? activeStore,
+        uploadPreview?.candidates ?? activeCandidates,
+        uploadPreview || activeDataSource === "imported"
+          ? "untrusted_normalized_csv"
+          : "seeded_sample",
+      );
+      const requestBody = JSON.stringify(request);
 
       setApiKey("");
       setShowApiKey(false);
@@ -235,6 +283,11 @@ export default function App() {
       const payload = (await response.json()) as AnalyzeResponse;
 
       startTransition(() => {
+        setActiveStore(request.store);
+        setActiveCandidates(request.candidates);
+        setActiveDataSource(uploadPreview ? "imported" : activeDataSource);
+        setSelectedLeakId(request.candidates[0]?.id ?? "");
+        setApprovedRecords({});
         setAnalysisResponse(payload);
         setLiveState(payload.meta.live ? "success" : "sample");
         setShowApiKey(false);
@@ -261,8 +314,14 @@ export default function App() {
       [key]: {
         leakId: selectedLeak.id,
         productName: selectedLeak.product.name,
+        sku: selectedLeak.product.sku,
         title: fix.title,
         type: fix.type,
+        rationale: fix.rationale,
+        before: fix.before,
+        after: fix.after,
+        evidenceRefs: [...fix.evidence_refs],
+        whatNotToClaim: selectedLeak.analysis.what_not_to_claim,
       },
     }));
   }
@@ -294,6 +353,7 @@ export default function App() {
       approvedTitlesForSelected,
       liveState,
       analysisResponse.meta.model,
+      activeStore.name,
     );
 
     try {
@@ -318,16 +378,120 @@ export default function App() {
     window.requestAnimationFrame(() => apiKeyInputRef.current?.focus());
   }
 
-  function handlePreviewUpload(file: File | null) {
+  async function handlePreviewUpload(file: File | null) {
     if (!file) {
       setUploadPreview(null);
+      setUploadError(null);
+      setRedactionConfirmed(false);
       return;
     }
 
-    setUploadPreview({
-      name: file.name,
-      sizeLabel: bytesToLabel(file.size),
+    setUploadPreview(null);
+    setUploadError(null);
+    setRedactionConfirmed(false);
+
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setUploadError("Use the normalized CartCause CSV template.");
+      return;
+    }
+
+    if (file.size > MAX_CARTCAUSE_IMPORT_BYTES) {
+      setUploadError("CSV must be 250 KB or smaller.");
+      return;
+    }
+
+    try {
+      const parsed = parseCartCauseCsv(await file.text());
+      setUploadPreview({
+        ...parsed,
+        name: file.name,
+        sizeLabel: bytesToLabel(file.size),
+      });
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "Could not parse the CSV packet.",
+      );
+    }
+  }
+
+  async function handleLoadSampleTemplate() {
+    setUploadPreview(null);
+    setUploadError(null);
+    setRedactionConfirmed(false);
+
+    try {
+      const response = await fetch("/cartcause-sample-import.csv", {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error("Could not load the fictional CSV template.");
+      }
+
+      const csv = await response.text();
+      const parsed = parseCartCauseCsv(csv);
+      setUploadPreview({
+        ...parsed,
+        name: "cartcause-sample-import.csv",
+        sizeLabel: bytesToLabel(new TextEncoder().encode(csv).byteLength),
+      });
+    } catch (error) {
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Could not load the fictional CSV template.",
+      );
+    }
+  }
+
+  function handleResetSample() {
+    setActiveStore(sampleStore);
+    setActiveCandidates(sampleCandidates);
+    setActiveDataSource("sample");
+    setAnalysisResponse(sampleAnalysisResponse);
+    setSelectedLeakId(sampleCandidates[0]?.id ?? "");
+    setApprovedRecords({});
+    setUploadPreview(null);
+    setUploadError(null);
+    setRedactionConfirmed(false);
+    setLiveState("sample");
+    setErrorMessage(null);
+  }
+
+  function handleExportApprovedBundle() {
+    if (approvedItems.length === 0) {
+      return;
+    }
+
+    const bundle = {
+      schemaVersion: "1.0",
+      exportedAt: new Date().toISOString(),
+      briefDate,
+      store: activeStore,
+      analysisSource: {
+        mode: analysisResponse.meta.live ? "live" : "seeded_sample",
+        model: analysisResponse.meta.model,
+        dataSource: activeDataSource,
+      },
+      approvals: approvedItems,
+      guardrail:
+        "Human-approved handoff only. Review in the destination system before publishing.",
+    };
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+      type: "application/json",
     });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    const storeSlug =
+      activeStore.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "store";
+    anchor.download = `cartcause-${storeSlug}-approved-patches.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   const stateMeta = liveStateTone[liveState];
@@ -368,8 +532,15 @@ export default function App() {
                 </h1>
                 <p className="mt-5 max-w-2xl text-sm leading-7 text-[var(--ink-muted)] sm:text-base">
                   CartCause connects return signals, reviews, support notes, and product
-                  promises into one evidence-linked morning brief for {sampleStore.name}.
+                  promises into one evidence-linked morning brief for {activeStore.name}.
                 </p>
+                <a
+                  href="#leak-candidates"
+                  className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-[var(--paper)] shadow-[0_14px_34px_rgba(14,19,24,0.22)] transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(14,19,24,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
+                >
+                  Review the top leak
+                  <ArrowDown size={18} aria-hidden="true" />
+                </a>
               </div>
 
               <div className="mt-8 flex flex-wrap gap-2">
@@ -377,6 +548,9 @@ export default function App() {
                 <span className="light-chip">{stateMeta.label}</span>
                 <span className="light-chip">
                   {analysisResponse.meta.live ? analysisResponse.meta.model : "Sample mode"}
+                </span>
+                <span className="light-chip">
+                  {activeDataSource === "imported" ? "Imported CSV" : "Fictional data"}
                 </span>
               </div>
             </div>
@@ -411,12 +585,16 @@ export default function App() {
                   <StatusPill tone="signal">Morning brief</StatusPill>
                   <StatusPill tone="muted">{formatDateLabel(briefDate)}</StatusPill>
                   <StatusPill tone="muted">
-                    {sampleBriefMeta.ordersYesterday} orders yesterday
+                    {activeMetrics.orders} orders yesterday
                   </StatusPill>
                 </div>
 
                 <div className="mt-6 max-w-sm">
-                  <p className="eyebrow">Sample leakage observed</p>
+                  <p className="eyebrow">
+                    {activeDataSource === "imported"
+                      ? "User-supplied leakage estimate"
+                      : "Fictional sample leakage"}
+                  </p>
                   <AnimatePresence mode="wait">
                     <m.p
                       key={analysisResponse.meta.live ? "live-total" : "sample-total"}
@@ -426,12 +604,13 @@ export default function App() {
                       transition={{ duration: reduceMotion ? 0 : 0.35, ease: "easeOut" }}
                       className="mt-3 text-5xl font-semibold tracking-[-0.04em] text-[var(--paper)]"
                     >
-                      {centsToCurrency(sampleBriefMeta.sampleLeakageTotalCents)}
+                      {centsToCurrency(activeMetrics.leakageCents)}
                     </m.p>
                   </AnimatePresence>
                   <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
-                    Built from sample store data. GPT-5.6 ranks the likely causes and drafts
-                    the fixes. Arithmetic and display metrics are computed locally.
+                    {activeDataSource === "imported"
+                      ? "Normalized in this browser. Return rates are recomputed locally; the leakage estimate comes from the CSV and is not independently verified."
+                      : "Built from fixed fictional inputs. GPT-5.6 ranks likely causes and drafts fixes; the displayed financial values are illustrative, not model output."}
                   </p>
                 </div>
 
@@ -459,11 +638,7 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setAnalysisResponse(sampleAnalysisResponse);
-                      setLiveState("sample");
-                      setErrorMessage(null);
-                    }}
+                    onClick={handleResetSample}
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--paper)] transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--paper)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
                   >
                     <ArrowClockwise size={18} aria-hidden="true" />
@@ -476,6 +651,9 @@ export default function App() {
                 leaks={mergedLeaks}
                 selectedLeakId={selectedLeak?.id ?? ""}
                 onSelect={setSelectedLeakId}
+                dataLabel={
+                  activeDataSource === "imported" ? "Imported CSV" : "Fictional sample"
+                }
               />
             </div>
 
@@ -489,7 +667,7 @@ export default function App() {
                     </p>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3">
                     <div className="rounded-[1.4rem] border border-white/8 bg-[var(--surface)] p-4">
                       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
                         Model boundary
@@ -577,33 +755,69 @@ export default function App() {
                     </div>
                     <div className="rounded-[1.4rem] border border-white/8 bg-[var(--surface)] p-4">
                       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
-                        Upload intake
+                        Normalized CSV intake
                       </p>
                       <label className="mt-2 flex cursor-pointer flex-col gap-3 rounded-[1.2rem] border border-dashed border-white/15 bg-black/10 p-4 text-sm text-[var(--ink-soft)] transition hover:border-white/25 hover:text-[var(--paper)] focus-within:border-[var(--coral)]">
                         <span className="inline-flex items-center gap-2 font-semibold text-[var(--paper)]">
                           <UploadSimple size={18} aria-hidden="true" />
-                          Add returns export
+                          Add normalized evidence CSV
                         </span>
                         <span id="upload-preview-note">
-                          Preview only. This upload does not connect to the live API yet.
+                          Parsed locally first. Raw files are never uploaded; normalized fields are untrusted user input and are sent only when you run live analysis.
                         </span>
                         <input
                           type="file"
-                          accept=".csv,.txt,.json"
-                          aria-label="Preview a returns export"
+                          accept=".csv,text/csv"
+                          aria-label="Import a normalized evidence CSV"
                           aria-describedby="upload-preview-note"
                           className="sr-only"
                           onChange={(event) =>
-                            handlePreviewUpload(event.target.files?.[0] ?? null)
+                            void handlePreviewUpload(event.target.files?.[0] ?? null)
                           }
                         />
                       </label>
-                      {uploadPreview ? (
-                        <p
-                          role="status"
-                          className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--ink-soft)]"
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                        <button
+                          type="button"
+                          onClick={() => void handleLoadSampleTemplate()}
+                          className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--acid)] underline decoration-white/20 underline-offset-4 transition hover:text-[var(--paper)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--acid)]"
                         >
-                          Preview: {uploadPreview.name} • {uploadPreview.sizeLabel}
+                          Load fictional template
+                        </button>
+                        <a
+                          href="/cartcause-sample-import.csv"
+                          download
+                          className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--ink-soft)] underline decoration-white/20 underline-offset-4 transition hover:text-[var(--paper)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--acid)]"
+                        >
+                          Download CSV
+                        </a>
+                      </div>
+                      {uploadPreview ? (
+                        <div className="mt-3 rounded-[1.1rem] border border-[color:color-mix(in_srgb,var(--acid)_34%,transparent)] bg-[color:color-mix(in_srgb,var(--acid)_9%,transparent)] p-3">
+                          <p role="status" className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--paper)]">
+                            Ready: {uploadPreview.name} • {uploadPreview.sizeLabel}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                            {uploadPreview.candidates.length} candidates and {uploadPreview.evidenceCount} evidence excerpts normalized in this browser.
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                            Return rates are recomputed. Leakage estimates are copied from the CSV and are not independently verified.
+                          </p>
+                          <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm leading-6 text-[var(--paper)]">
+                            <input
+                              ref={redactionInputRef}
+                              type="checkbox"
+                              checked={redactionConfirmed}
+                              onChange={(event) => setRedactionConfirmed(event.target.checked)}
+                              className="mt-1 h-4 w-4 accent-[var(--acid)]"
+                            />
+                            I confirm this packet is fictional or redacted and contains no sensitive customer data.
+                          </label>
+                        </div>
+                      ) : null}
+                      {uploadError ? (
+                        <p role="alert" className="mt-3 text-sm leading-6 text-[var(--coral)]">
+                          {uploadError}
                         </p>
                       ) : null}
                     </div>
@@ -623,7 +837,7 @@ export default function App() {
                   {liveState === "success" ? (
                     <span className="inline-flex items-center gap-2 text-[var(--paper)]">
                       <Flask size={16} aria-hidden="true" />
-                      Live analysis merged into the sample brief by `candidate_id`. The request key has already been cleared from tab memory.
+                      Live analysis merged into the {activeDataSource === "imported" ? "imported" : "sample"} brief by `candidate_id`. The request key has already been cleared from tab memory.
                     </span>
                   ) : null}
                   {liveState === "error" ? (
@@ -636,15 +850,34 @@ export default function App() {
                   {liveState === "sample" ? (
                     <span className="inline-flex items-center gap-2 text-[var(--paper)]">
                       <ClockCountdown size={16} aria-hidden="true" />
-                      Sample mode is active. Add your key, then run the live brief when `/api/analyze` is ready.
+                      {uploadPreview
+                        ? "The normalized packet is ready locally. Confirm redaction, add a temporary key, then run live analysis."
+                        : "Fictional sample mode is active. Review it without a key, or add a temporary key for a live GPT-5.6 run."}
                     </span>
                   ) : null}
                 </div>
               </section>
 
-              {selectedLeak ? <EvidencePanel leak={selectedLeak} /> : null}
+              {selectedLeak ? (
+                <EvidencePanel
+                  leak={selectedLeak}
+                  dataLabel={
+                    activeDataSource === "imported"
+                      ? "Imported CSV"
+                      : "Fictional sample"
+                  }
+                />
+              ) : null}
 
-              <ApprovedTray items={approvedItems} />
+              <a
+                href="#fix-studio"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--coral)_48%,transparent)] bg-[var(--paper)] px-5 py-3 text-sm font-semibold text-[var(--ink)] xl:hidden"
+              >
+                Review approve-ready fixes
+                <ArrowDown size={18} aria-hidden="true" />
+              </a>
+
+              <ApprovedTray items={approvedItems} onExport={handleExportApprovedBundle} />
             </div>
 
             <div className="space-y-6 xl:sticky xl:top-6 xl:h-fit">
@@ -670,9 +903,9 @@ export default function App() {
                   </div>
                 </div>
                 <p className="mt-4 text-sm leading-7 text-[var(--ink-soft)]">
-                  This prototype keeps the seeded {sampleStore.name} data visible in every
-                  state. If a live call fails, the app labels the result and preserves the
-                  sample brief instead of pretending the model responded.
+                  The public brief starts with fictional {sampleStore.name} data. Imported
+                  CSV fields stay local until a confirmed live run, and a failed request
+                  preserves the last valid brief instead of pretending the model responded.
                 </p>
               </section>
             </div>

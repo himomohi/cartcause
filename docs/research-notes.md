@@ -48,9 +48,9 @@ Repeated qualitative themes:
 
 ## Product inference
 
-The narrow Build Week opportunity is an evidence-linked daily margin-leak brief. CartCause combines deterministic metrics with qualitative evidence, uses GPT-5.6 for structured semantic synthesis, and ends in approval-ready storefront and CX fixes. It avoids claims that the available community evidence cannot support.
+The narrow Build Week opportunity is an evidence-linked daily margin-leak brief. CartCause combines provided metrics with qualitative evidence, uses GPT-5.6 for structured semantic synthesis, and ends in approval-ready storefront and CX fixes. It avoids claims that the available community evidence cannot support.
 
 ## Key differentiation risks
 
-1. Data semantics vary between stores and platforms. The public demo therefore uses explicit fictional inputs and exposes the deterministic metrics rather than claiming universal calculations.
+1. Data semantics vary between stores and platforms. The public demo therefore uses explicit fictional inputs, recomputes only the return rate, and labels imported leakage estimates as unverified user input rather than claiming universal calculations.
 2. Returns, reviews, and analytics are established product categories. CartCause must keep the product centered on a ranked brief, evidence references, and an approval loop rather than growing into a general dashboard.

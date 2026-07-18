@@ -12,7 +12,7 @@ Before running the optional live GPT-5.6 brief:
 2. Create a dedicated OpenAI project key for this demonstration. Do not use a broadly privileged or shared key.
 3. Restrict the key's permissions where possible and configure a low project budget or usage alert.
 4. Do not paste customer personal data, payment data, credentials, confidential contracts, or raw store exports into this prototype.
-5. Keep the fictional Morrow Supply sample selected. The current public UI does not ingest real files.
+5. Prefer the fictional Morrow Supply sample or the one-click fictional CSV template. If you use another file, normalize and manually redact it first; the importer does not detect PII.
 6. Revoke or delete the demonstration key when testing is complete.
 
 OpenAI recommends that production applications keep API keys out of client-side environments. CartCause's browser-entered bring-your-own-key flow is intentionally limited to this public hackathon demonstration. See OpenAI's [API key safety guidance](https://help.openai.com/en/articles/5112595) before using it.
@@ -25,26 +25,28 @@ OpenAI recommends that production applications keep API keys out of client-side 
 | Select a candidate | Changes local React state. | No request. | No request. |
 | Approve or reject a fix | Stores the choice in memory for the current page session. | No request. | No request. |
 | Copy the implementation brief | Builds the text in the browser and uses the Clipboard API. | No request. | No request. |
-| Preview a file | Displays only the selected file's name and size. The current code does not read its contents or add it to the live request. | No upload request. | No upload request. |
-| Run the live brief | Sends the fictional request body and API key to same-origin `/api/analyze` over HTTPS. | Validates the request, hashes the session ID, creates a request-scoped OpenAI client, and forwards the analysis input. | Processes the fictional candidate data and returns structured analysis. |
+| Load or choose a normalized CSV | Reads and parses the raw file locally, validates the 14-column contract, computes return rates, and shows candidate/evidence counts. | No raw-file upload and no `/api/analyze` request. | No request. |
+| Download approved patch bundle | Creates a JSON file from human-approved fixes in browser memory. | No request. | No request. |
+| Run the live brief | Sends the currently selected normalized request body and API key to same-origin `/api/analyze` over HTTPS. Imported packets require a fictional/redacted-data acknowledgement. | Validates the request, hashes the session ID, creates a request-scoped OpenAI client, and forwards the analysis input. | Processes the normalized candidate data and returns structured analysis. |
 
 The sample experience does not need an API key. Sample content is not sent to OpenAI until the user explicitly selects **Run live GPT-5.6 brief**.
 
 ## Exactly what the live request sends
 
-The current public UI constructs the request from the seeded fictional dataset. It sends:
+The default path constructs the request from the seeded fictional dataset. If a validated CSV packet is loaded and confirmed, the same fields come from that normalized packet instead. The request sends:
 
 - a random pseudonymous browser session ID to the CartCause function;
-- the fictional store name and currency;
-- the sample brief date;
+- the normalized store name and USD currency;
+- the brief date;
+- a data-source label plus the required `fictionalOrRedacted: true` and `rawFileUploaded: false` attestation;
 - one to five candidate IDs, SKUs, and product names;
-- deterministic sample counts, return rates, and leakage values;
+- provided counts and leakage estimates plus locally recomputed return rates;
 - bounded return, review, support, and product-copy excerpts with source labels;
-- the current fictional product description and FAQ.
+- the current product description and FAQ fields from the normalized packet.
 
 The function uses the raw session ID only to create a SHA-256 safety identifier. The raw session ID is excluded from the model input; OpenAI receives the hash as `safety_identifier`.
 
-The API accepts at most five candidates and a request body no larger than 250 KB. Evidence and copy fields also have explicit length limits. These bounds reduce accidental over-sharing, but they are not a personal-data detector or redaction system.
+The API accepts at most five candidates and a request body no larger than 250 KB. Evidence and copy fields also have explicit length limits. It rejects requests without the data-use attestation and rejects a return rate that does not exactly match `returns / orders`. A `seeded_sample` request must exactly match the server-known fictional store and candidates; every CSV request is explicitly labeled `untrusted_normalized_csv`. Estimated leakage remains a validated but unverified client input for display and is excluded from model input. These controls reduce accidental over-sharing and metric inconsistency, but the attestation is not proof of redaction and the API is not a personal-data detector.
 
 ## API key lifecycle
 
@@ -105,15 +107,15 @@ For a real-store proof of concept, first create an offline normalized dataset co
 
 1. Open [cartcause.vercel.app](https://cartcause.vercel.app).
 2. Confirm the interface identifies **Morrow Supply** and labels the metrics as sample data.
-3. Read the headline leakage total. It is computed from fictional seeded values, not generated by GPT-5.6.
+3. Read the headline leakage total. It is a fixed fictional seeded value, not generated by GPT-5.6.
 4. Select each ranked candidate in the leak rail.
 5. In **Evidence**, review the visible return, review, support, and product-page evidence IDs.
 6. Read the cause hypothesis, confidence, and **What not to claim** boundary.
 7. In **Fix Studio**, compare the current copy with each proposed replacement.
-8. Select **Approve fix** or **Reject**. This changes browser state only and does not publish anything.
+8. Select **Approve fix** or **Undo approval**. This changes browser state only and does not publish anything.
 9. Review the accepted items in **Approved today**.
-10. Select **Copy implementation brief** to copy the handoff text to the clipboard.
-11. Select **Reset to sample brief** at any time to restore the seeded analysis.
+10. Select **Copy implementation brief** or **Download approved patch bundle**. The JSON file is a human-review handoff, not an automatic publish action.
+11. Select **Reset to sample brief** at any time to restore the seeded analysis and clear any imported packet.
 
 ### B. Run the optional live GPT-5.6 brief safely
 
@@ -128,20 +130,24 @@ For a real-store proof of concept, first create an offline normalized dataset co
 9. Select **Run live GPT-5.6 brief**.
 10. Confirm that the key field clears as soon as the request starts. This is expected and prevents an accidental second use from the form.
 11. Wait for the live status. If the provider succeeds, the interface labels the result as a live GPT-5.6 analysis.
-12. Open each candidate and verify that every cited evidence ID exists in that candidate's evidence panel.
+12. Open each candidate and verify that every leak and every proposed fix cites visible evidence IDs from that candidate.
 13. Treat every cause as a hypothesis, not proven causation. Review confidence and **What not to claim** before approving a change.
-14. Confirm that the financial values remain the original deterministic sample values; the model output has no money field.
+14. Confirm that the financial values remain the original provided sample values; the model output has no money field.
 15. Approve only the fixes you would be comfortable handing to a human storefront or CX operator. CartCause does not auto-publish them.
-16. Copy the implementation brief if desired.
+16. Copy the implementation brief or download the approved JSON patch bundle if desired.
 17. Select **Reset to sample brief** to leave live mode.
 18. Delete or revoke the demonstration key from the [API keys page](https://platform.openai.com/api-keys), then review API usage for unexpected requests. OpenAI documents key deletion in [this help article](https://help.openai.com/en/articles/9047852).
 
-### C. Understand the upload preview
+### C. Use the normalized CSV intake safely
 
-1. Selecting **Add returns export** opens the browser's file picker.
-2. The current prototype records only the chosen file's name and size for a visual preview.
-3. It does not read, parse, upload, or include the file contents in `/api/analyze`.
-4. Do not interpret a preview as successful import or analysis. Real ingestion is explicitly out of scope for this version.
+1. Select **Load fictional template** for a safe no-setup demonstration, or download [`cartcause-sample-import.csv`](../public/cartcause-sample-import.csv) and preserve its 14-column header.
+2. Each evidence row repeats the candidate's store, SKU, product, metric, and current-copy fields. Repeated fields for the same candidate must match.
+3. CartCause reads the file in the browser and rejects missing columns, malformed CSV, duplicate IDs, inconsistent metrics, unsupported evidence types, out-of-range values, more than five candidates, or fewer than two evidence rows per candidate.
+4. Return rate is recomputed from `returns / orders`; the leakage estimate is copied from the CSV, labeled as user-supplied, and not independently verified. The raw file is never uploaded or stored by CartCause.
+5. Review the visible filename, size, candidate count, and evidence count.
+6. Confirm that the packet is fictional or redacted and contains no sensitive customer data. This checkbox is an explicit user acknowledgement, not automatic redaction.
+7. Only after an intentional live run does the browser send the validated normalized fields in the JSON request. The API key remains in the request header, never the CSV or JSON body.
+8. Select **Reset to sample brief** to discard the imported packet from React state and restore Morrow Supply.
 
 ## Troubleshooting
 
@@ -155,7 +161,8 @@ For a real-store proof of concept, first create an offline normalized dataset co
 | HTTP 502 | OpenAI refused, failed, or returned an invalid structured result. | Keep the sample brief, check project/model access, and retry only after reviewing the cause. |
 | HTTP 500 | An unexpected server error occurred. | Do not repeatedly submit the key. Return to sample mode and report the failure without sharing the key. |
 | Copy fails | Clipboard access was rejected or the page lacks a secure context. | Use the HTTPS deployment and retry after granting clipboard permission. |
-| File selection shows only a name and size | The upload control is preview-only. | Do not expect the file to affect analysis. |
+| CSV import is rejected | The schema, bounds, identifier rules, or repeated candidate fields failed local validation. | Start from the fictional template and correct the reported row/column issue; do not weaken the validator. |
+| Imported packet is ready but Run is blocked | The fictional/redacted-data acknowledgement is not checked. | Review the packet, remove sensitive data offline, then confirm only if the data is safe to send. |
 
 Live failures never silently replace the sample brief with fabricated success.
 
@@ -178,7 +185,7 @@ Before using CartCause with real commerce data, a production implementation woul
 - documented infrastructure logging and secret-redaction controls;
 - automated personal-data detection and redaction plus a reviewed import schema;
 - consent, deletion, retention, residency, vendor, and incident-response policies;
-- security headers and a deployment-specific content security policy;
+- a nonce-based production CSP, continuing header review, and deployment monitoring beyond the prototype's current static CSP/frame/referrer/permission headers;
 - audit logging that records safe events without credentials or raw customer text;
 - a threat model, penetration testing, dependency review, and operational monitoring;
 - legal and compliance review appropriate to the store, customers, and jurisdictions.
@@ -188,6 +195,8 @@ The current prototype makes no claim of PCI DSS, HIPAA, GDPR, CCPA/CPRA, SOC 2, 
 ## Repository-enforced safeguards
 
 - strict Zod validation for request and response shapes;
+- local normalized CSV parsing with a 250 KB limit, a fixed header contract, row-level validation, and no raw-file upload;
+- exact server binding for the fictional seeded dataset, explicit `untrusted_normalized_csv` labeling, a client-asserted fictional/redacted and no-raw-file acknowledgement, and exact return-rate recomputation;
 - a 250 KB body limit and bounded candidate/evidence fields;
 - unique candidate and evidence identifiers;
 - HTTPS-only live-key submission outside localhost;
@@ -195,8 +204,9 @@ The current prototype makes no claim of PCI DSS, HIPAA, GDPR, CCPA/CPRA, SOC 2, 
 - `store: false` on the Responses API call;
 - pseudonymous SHA-256 `safety_identifier` with the raw browser session ID omitted from model input;
 - structured output plus a second semantic validation pass;
-- evidence ownership, complete ranking, and no-money-output checks;
+- leak-level and per-fix evidence ownership, complete ranking, and no-money-output checks;
 - `no-store` API responses and safe public error messages;
+- CSP, frame denial, no-referrer, nosniff, and minimal permissions-policy deployment headers;
 - no automatic storefront writes or publishing.
 
 These controls reduce risk; they do not remove the prototype limitations described above.

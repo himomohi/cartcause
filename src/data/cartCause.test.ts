@@ -20,8 +20,31 @@ describe("buildAnalyzeRequest", () => {
       clientSessionId: "session-123",
       store: sampleStore,
       briefDate: sampleBriefMeta.briefDate,
+      dataUse: {
+        source: "seeded_sample",
+        fictionalOrRedacted: true,
+        rawFileUploaded: false,
+      },
       candidates: sampleCandidates,
     });
+  });
+
+  it("accepts normalized imported candidates without mutating them", () => {
+    const importedCandidates = [sampleCandidates[0]!];
+    const importedStore = { name: "Imported Store", currency: "USD" as const };
+    const request = buildAnalyzeRequest(
+      "session-456",
+      sampleBriefMeta.briefDate,
+      importedStore,
+      importedCandidates,
+      "untrusted_normalized_csv",
+    );
+
+    expect(request.store).toEqual(importedStore);
+    expect(request.dataUse.source).toBe("untrusted_normalized_csv");
+    expect(request.candidates).toEqual(importedCandidates);
+    expect(request.candidates).not.toBe(importedCandidates);
+    expect(request.candidates[0]).not.toBe(importedCandidates[0]);
   });
 });
 
@@ -64,6 +87,7 @@ describe("mergeRankedLeaks", () => {
                 type: "cx_macro",
                 title: "Clarify laptop storage",
                 rationale: "Live rationale",
+                evidence_refs: ["RET-991"],
                 before: "Before",
                 after: "After",
               },

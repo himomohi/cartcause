@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
+import { sampleCandidates, sampleStore } from '../data/cartCause'
+
 const MAX_SESSION_ID_LENGTH = 128
 const MAX_STORE_NAME_LENGTH = 120
 const MAX_DATE_LENGTH = 40
@@ -63,6 +65,16 @@ const CandidateSchema = z
             path: ['returns'],
           })
         }
+
+        const expectedReturnRateBps =
+          value.orders === 0 ? 0 : Math.round((value.returns / value.orders) * 10_000)
+        if (value.returnRateBps !== expectedReturnRateBps) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'returnRateBps must equal returns divided by orders',
+            path: ['returnRateBps'],
+          })
+        }
       }),
     evidence: z
       .array(EvidenceSchema)
@@ -103,6 +115,13 @@ export const AnalyzeRequestSchema = z
       })
       .strict(),
     briefDate: boundedString(MAX_DATE_LENGTH),
+    dataUse: z
+      .object({
+        source: z.enum(['seeded_sample', 'untrusted_normalized_csv']),
+        fictionalOrRedacted: z.literal(true),
+        rawFileUploaded: z.literal(false),
+      })
+      .strict(),
     candidates: z
       .array(CandidateSchema)
       .min(1)
@@ -143,6 +162,7 @@ const RecommendedFixSchema = z
     type: z.enum(['product_copy', 'size_guide', 'cx_macro', 'shipping_notice']),
     title: boundedString(MAX_FIX_TITLE_LENGTH),
     rationale: boundedString(MAX_FIX_TEXT_LENGTH),
+    evidence_refs: z.array(boundedString(MAX_ID_LENGTH)).min(1).max(MAX_EVIDENCE_PER_CANDIDATE),
     before: boundedString(MAX_FIX_TEXT_LENGTH),
     after: boundedString(MAX_FIX_TEXT_LENGTH),
   })
@@ -228,6 +248,17 @@ export function parseAnalyzeRequest(input: unknown): ValidationResult<AnalyzeReq
     }
   }
 
+  if (
+    parsed.data.dataUse.source === 'seeded_sample' &&
+    (JSON.stringify(parsed.data.store) !== JSON.stringify(sampleStore) ||
+      JSON.stringify(parsed.data.candidates) !== JSON.stringify(sampleCandidates))
+  ) {
+    return {
+      ok: false,
+      message: 'seeded_sample must exactly match the server-known fictional dataset',
+    }
+  }
+
   return { ok: true, data: parsed.data }
 }
 
@@ -242,6 +273,7 @@ export function buildAnalyzeInstructions(candidateCount: number): string {
     `Return exactly ${candidateCount} ranked leaks, one per candidate, with unique ranks 1 through ${candidateCount}.`,
     'Do not do arithmetic, do not estimate revenue, and do not mention money, dollars, cents, prices, or savings.',
     'Use only evidence_refs from the evidence IDs already provided for that exact candidate.',
+    'Every recommended fix must include its own evidence_refs, using only evidence already cited for that ranked leak.',
     'Keep confidence grounded in the provided excerpts only.',
     'Recommended fixes must be concrete copy or CX changes, not general strategy.',
     'what_not_to_claim must explicitly limit unsupported promises or absolutes.',
@@ -260,7 +292,19 @@ export function buildAnalyzeInput(request: AnalyzeRequest): string {
     request: {
       store: request.store,
       briefDate: request.briefDate,
-      candidates: request.candidates,
+      dataUse: request.dataUse,
+      candidates: request.candidates.map((candidate) => ({
+        id: candidate.id,
+        product: candidate.product,
+        computed: {
+          orders: candidate.computed.orders,
+          returns: candidate.computed.returns,
+          returnRateBps: candidate.computed.returnRateBps,
+          baselineReturnRateBps: candidate.computed.baselineReturnRateBps,
+        },
+        evidence: candidate.evidence,
+        currentCopy: candidate.currentCopy,
+      })),
     },
   })
 }
@@ -321,6 +365,26 @@ export function validateModelAnalysis(
       }
 
       localEvidenceRefs.add(evidenceRef)
+    }
+
+    for (const fix of leak.recommended_fixes) {
+      const fixEvidenceRefs = new Set<string>()
+
+      for (const evidenceRef of fix.evidence_refs) {
+        if (!candidateEvidenceIds.has(evidenceRef)) {
+          return { ok: false, reason: 'Model fix referenced evidence outside the candidate scope' }
+        }
+
+        if (!localEvidenceRefs.has(evidenceRef)) {
+          return { ok: false, reason: 'Model fix must use evidence cited by its ranked leak' }
+        }
+
+        if (fixEvidenceRefs.has(evidenceRef)) {
+          return { ok: false, reason: 'Model fix repeated an evidence reference' }
+        }
+
+        fixEvidenceRefs.add(evidenceRef)
+      }
     }
   }
 

@@ -8,9 +8,13 @@
 - [ ] BYOK key clears from React state and is absent from application-controlled browser storage, JSON bodies/responses, and Vercel environment variables
 - [ ] Public copy accurately discloses transient browser/function/provider handling and avoids unverifiable platform-log claims
 - [ ] Data-use guide explains `store: false`, OpenAI abuse monitoring, prohibited data, key revocation, and prototype limitations
-- [ ] Monetary metrics originate only from validated sample inputs
+- [ ] Seeded monetary values match the server-known fictional dataset; imported leakage is labeled as an unverified user input and excluded from model input
 - [ ] Every model evidence reference maps to the same visible candidate
-- [ ] Approve, reject, and copy implementation brief work
+- [ ] Every fix cites only evidence already supporting its parent leak
+- [ ] Fictional template normalizes to 3 candidates and 12 evidence excerpts without an API request
+- [ ] Imported packets require the fictional/redacted-data acknowledgement
+- [ ] Approve, undo, copy, and approved JSON patch export work
+- [ ] CSP, frame denial, no-referrer, nosniff, and permissions headers are present in production
 - [ ] Error, refusal, rate-limit, empty, and loading states work
 - [ ] Desktop and mobile paths are verified
 - [ ] Keyboard and reduced-motion paths are verified

@@ -12,15 +12,18 @@ interface LeakRailProps {
   leaks: MergedLeak[];
   selectedLeakId: string;
   onSelect: (leakId: string) => void;
+  dataLabel: string;
 }
 
 export function LeakRail({
   leaks,
   selectedLeakId,
   onSelect,
+  dataLabel,
 }: LeakRailProps) {
   return (
     <section
+      id="leak-candidates"
       aria-labelledby="leak-rail-title"
       className="paper-panel flex h-full flex-col gap-4 p-4 md:p-5"
     >
@@ -34,7 +37,7 @@ export function LeakRail({
             Ranked candidates
           </h2>
         </div>
-        <StatusPill tone="muted">Sample store data</StatusPill>
+        <StatusPill tone="muted">{dataLabel}</StatusPill>
       </div>
 
       <ol

@@ -34,6 +34,11 @@ const validRequest = {
     currency: 'USD' as const,
   },
   briefDate: '2026-07-18',
+  dataUse: {
+    source: 'untrusted_normalized_csv' as const,
+    fictionalOrRedacted: true as const,
+    rawFileUploaded: false as const,
+  },
   candidates: [
     {
       id: 'cand_a',
@@ -140,6 +145,7 @@ describe('api/analyze BYOK handling', () => {
                 type: 'size_guide',
                 title: 'Add fit guidance near the buy box',
                 rationale: 'Customers are already asking whether to size up, so the size choice needs explicit guidance.',
+                evidence_refs: ['ev_a_1', 'ev_a_2'],
                 before: 'Lightweight running shoe.',
                 after: 'Lightweight running shoe with a snug toe box; if you are between sizes or prefer extra room, size up.',
               },
@@ -189,6 +195,7 @@ describe('api/analyze BYOK handling', () => {
                 type: 'size_guide',
                 title: 'Add fit guidance near the buy box',
                 rationale: 'Customers are already asking whether to size up, so the size choice needs explicit guidance.',
+                evidence_refs: ['ev_a_1', 'ev_a_2'],
                 before: 'Lightweight running shoe.',
                 after: 'Lightweight running shoe with a snug toe box; if you are between sizes or prefer extra room, size up.',
               },

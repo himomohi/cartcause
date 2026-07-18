@@ -10,8 +10,8 @@ Browser
   -> Zod request validation
   -> OpenAI Responses API, model gpt-5.6
   -> strict structured semantic analysis
-  -> candidate and evidence reference validation
-  -> browser merges analysis with deterministic metrics
+  -> candidate, leak, and per-fix evidence reference validation
+  -> browser merges analysis with provided metrics and verified return rates
   -> evidence desk and fix approval UI
 ```
 
@@ -22,9 +22,10 @@ Browser
 - Motion for purposeful state transitions
 - Phosphor icons with a consistent weight
 - Seeded fictional store data for a no-login public demo
+- Browser-side normalized CSV parsing with no raw-file upload
 - Browser state for leak selection, live analysis, and approved fixes
 
-The client owns metric display, candidate selection, evidence navigation, approval state, implementation-brief copy, and the temporary BYOK field. The key exists in React memory for the current tab, is sent in the `x-openai-api-key` request header, and is cleared from React state as soon as the live request begins. A separate random pseudonymous session ID is persisted in `localStorage` for safety correlation; it is not the API key.
+The client owns CSV parsing, metric display, candidate selection, evidence navigation, approval state, implementation-brief copy/JSON export, and the temporary BYOK field. Imported return rates are computed locally. The key exists in React memory for the current tab, is sent in the `x-openai-api-key` request header, and is cleared from React state as soon as the live request begins. A separate random pseudonymous session ID is persisted in `localStorage` for safety correlation; it is not the API key.
 
 ## Serverless endpoint
 
@@ -35,8 +36,9 @@ Request fields:
 - pseudonymous `clientSessionId`
 - store name and currency
 - brief date
+- data source plus a required fictional/redacted and no-raw-file attestation
 - one to five leak candidates
-- deterministic per-candidate metrics
+- provided per-candidate counts and leakage estimates plus recomputed return rates
 - bounded evidence excerpts with typed IDs
 - current product description and FAQ
 
@@ -47,13 +49,13 @@ Request header:
 Server responsibilities:
 
 1. Reject non-POST methods, missing request keys, and invalid JSON.
-2. Validate counts, types, bounded strings, and identifier uniqueness.
+2. Bind `seeded_sample` to the exact server-known fictional dataset, label every CSV packet `untrusted_normalized_csv`, and validate the client data-use attestation, counts, types, bounded strings, identifier uniqueness, and exact `returns / orders` rate consistency.
 3. Instantiate the OpenAI client with the request-scoped key without persisting it or invoking application logging for it.
 4. Hash the client session into a pseudonymous safety identifier and omit the raw session ID from model input.
 5. Call `openai.responses.parse` with `gpt-5.6`.
 6. Use `zodTextFormat` for strict structured output.
 7. Validate that every candidate appears exactly once and ranks are unique.
-8. Validate that evidence references exist and belong to the cited candidate.
+8. Validate that leak-level and per-fix evidence references exist, belong to the cited candidate, and keep every fix inside its parent leak's evidence set.
 9. Return analysis without raw provider output, credentials, or payload logs, and mark responses `no-store`.
 10. Map validation, rate-limit, refusal, provider, and unexpected failures to explicit safe errors.
 
@@ -66,7 +68,7 @@ Server responsibilities:
 - Output: strict Zod Structured Output
 - Safety identifier: SHA-256 hash of a bounded pseudonymous browser session ID
 
-The prompt tells the model that arithmetic is outside its role. The output schema omits money, counts, and rates. GPT-5.6 ranks provided candidates, forms bounded hypotheses, selects evidence IDs, drafts minimal fixes, and states what not to claim.
+The prompt tells the model that arithmetic is outside its role. Estimated leakage is removed from model input, and the output schema omits money, counts, and rates. GPT-5.6 ranks provided candidates, forms bounded hypotheses, selects evidence IDs, drafts minimal fixes, and states what not to claim.
 
 ## Shared validation
 
@@ -105,8 +107,9 @@ The seeded brief is always labeled as sample data. A live failure never silently
 - The server uses the request header to instantiate a request-scoped OpenAI client. Repository code does not log or return the key, but browser, network, hosting, and provider infrastructure necessarily process it transiently.
 - The endpoint marks responses `Cache-Control: no-store` and `Pragma: no-cache`.
 - The random pseudonymous browser session ID is stored in `localStorage`, sent to the function, hashed for `safety_identifier`, and excluded from the model prompt.
-- No customer PII is required by the current public UI. The generic API contract does not include automated PII detection or redaction.
+- No customer PII is required by the current public UI. The importer is bounded and requires a redaction acknowledgement, but it does not include automated PII detection.
 - Inputs are bounded and validated before the provider call.
+- The server verifies the exact seeded sample. Imported provenance and redaction remain client assertions, and imported leakage estimates are unverified user inputs.
 - HTML is never injected from model or evidence text.
 - The endpoint does not fetch user-provided URLs.
 - Application code contains no logger call for raw evidence, model prompts, or credentials; deployment-provider logging behavior is outside the repository's guarantees.
@@ -119,6 +122,7 @@ The complete handling map, user cautions, and production-readiness gaps are docu
 
 - Vercel static deployment for the Vite client
 - Vercel Function for `/api/analyze`
+- strict CSP, frame denial, no-referrer, nosniff, and minimal browser-permission headers
 - public app with no login
 - request-scoped bring-your-own-key access for live GPT-5.6 analysis
 - fictional seeded data remains fully testable
@@ -126,10 +130,10 @@ The complete handling map, user cautions, and production-readiness gaps are docu
 
 ## Verification matrix
 
-- Unit: request validation and semantic reference validation
+- Unit: CSV normalization, imported request routing, request validation, and semantic reference validation
 - API: invalid method, body, key, reference, and upstream mappings
 - Live API: real `gpt-5.6` output parsed and merged
 - Build: TypeScript and Vite production build
-- Browser: sample brief, live analysis, leak selection, evidence, approve, reject, copy
+- Browser: sample brief, local CSV normalization, leak selection, evidence, approve, undo, copy, and patch export readiness
 - Responsive: desktop, tablet, and narrow mobile
 - Accessibility: landmarks, labels, keyboard order, focus, contrast, and reduced motion

@@ -6,9 +6,9 @@
 
 ![CartCause editorial concept](public/assets/cartcause-editorial.png)
 
-CartCause connects deterministic order and return metrics with the language hidden in reviews, support notes, return reasons, and product-page promises. GPT-5.6 ranks the likely causes, cites the evidence behind each hypothesis, and drafts the smallest product-page or CX changes an owner can approve today.
+CartCause connects provided order, return, and leakage inputs with the language hidden in reviews, support notes, return reasons, and product-page promises. GPT-5.6 ranks the likely causes, cites the evidence behind each hypothesis, and drafts the smallest product-page or CX changes an owner can approve today.
 
-The public demo uses a fictional store named **Morrow Supply**. Every order count, rate, and dollar value is explicitly sample data. Read the [security, API key, and data use guide](docs/security-and-data.md) before running the optional live analysis.
+The public demo opens with a fictional store named **Morrow Supply**. Every seeded order count, rate, and dollar value is explicitly sample data. A normalized CSV can also be parsed and validated locally before an optional live run. Read the [security, API key, and data use guide](docs/security-and-data.md) before using that path.
 
 ## Why CartCause
 
@@ -29,7 +29,7 @@ The product is intentionally not a chatbot, general analytics suite, return port
 5. Read the confidence level and **What not to claim** boundary.
 6. Compare the current copy with each proposal in **Fix Studio**.
 7. Approve or reject a fix. This changes browser state only; CartCause never edits a storefront.
-8. Review accepted changes in **Approved today**, then select **Copy implementation brief**.
+8. Review accepted changes in **Approved today**, then copy the brief or download the human-approved JSON patch bundle.
 9. Select **Reset to sample brief** to restore the seeded analysis at any time.
 
 ### Run the optional live GPT-5.6 brief
@@ -43,9 +43,14 @@ The product is intentionally not a chatbot, general analytics suite, return port
 7. Approve only human-reviewed changes, copy the implementation brief if desired, and reset to sample mode.
 8. Delete or revoke the demonstration key, then review the OpenAI project's usage.
 
-### Understand the upload control
+### Use the normalized CSV intake
 
-**Add returns export** is preview-only. The current code displays the selected file's name and size but does not read, parse, upload, or include its contents in the live request.
+1. Select **Load fictional template** for the no-setup judge path, or download the template and replace only its fictional normalized fields.
+2. CartCause reads the CSV in the browser, validates its schema and bounds, recomputes return rates locally, and shows the candidate/evidence count. The raw file is never uploaded. Leakage estimates remain user-supplied CSV inputs and are labeled as unverified.
+3. Confirm that the packet is fictional or redacted. This acknowledgement is required before an imported packet can be sent.
+4. If you intentionally run live analysis, only the normalized store, candidate, metric, copy, and evidence fields are included in `/api/analyze`—not the raw file.
+
+The importer is not a PII detector. Never use raw customer exports or sensitive data. See [`public/cartcause-sample-import.csv`](public/cartcause-sample-import.csv) for the exact 14-column contract.
 
 The [complete usage guide](docs/security-and-data.md#detailed-usage) includes a field-by-field data map, safe testing checklist, error explanations, incident steps, and production-readiness limits.
 
@@ -60,16 +65,20 @@ The serverless `/api/analyze` endpoint uses the OpenAI Responses API with:
 - a pseudonymous hashed `safety_identifier`
 - Zod Structured Outputs through `zodTextFormat`
 
-GPT-5.6 does **not** calculate money, counts, or rates. The structured output schema contains no monetary field. The model returns one ranked analysis per candidate, a bounded cause hypothesis, confidence, evidence references, recommended fixes, and a `what_not_to_claim` guardrail.
+GPT-5.6 does **not** calculate money, counts, or rates. Estimated leakage is excluded from model input, and the structured output schema contains no monetary field. The model returns one ranked analysis per candidate, a bounded cause hypothesis, confidence, evidence references, recommended fixes, and a `what_not_to_claim` guardrail.
 
 The server performs a second semantic validation pass:
 
+- the `seeded_sample` source must exactly match the server-known fictional dataset; every CSV request is labeled `untrusted_normalized_csv`
+- declared data use must be fictional/redacted and must state that no raw file was uploaded; this remains a client attestation, not proof of redaction
+- imported return rate must exactly equal `returns / orders`
 - every candidate must appear exactly once
 - ranks must be a unique `1..N` sequence
 - every evidence ID must exist and belong to the cited candidate
+- every proposed fix must cite its own evidence, and those IDs must already support the parent leak
 - the response must not contain monetary language
 
-The browser then merges the validated analysis with the original deterministic metrics.
+The browser then merges the validated analysis with the original provided metrics. Return rates are recomputed and server-checked; imported leakage estimates are user-supplied and not independently verified.
 
 `store: false` opts this request out of retrievable Responses application-state storage. It does not disable OpenAI's default abuse-monitoring logs. OpenAI states that API data is not used for model training unless the API customer opts in, while abuse-monitoring data may generally be retained for up to 30 days. The key owner's project data controls govern that provider-side processing; see [OpenAI API data controls](https://platform.openai.com/docs/models/default-usage-policies-by-endpoint).
 
@@ -77,7 +86,7 @@ The browser then merges the validated analysis with the original deterministic m
 
 ```text
 React browser app
-  -> fictional candidate metrics and redacted evidence
+  -> fictional or locally normalized candidate metrics and redacted evidence
   -> request-scoped API key held in tab memory
   -> HTTPS POST /api/analyze with key in a request header
   -> Zod request validation
@@ -101,7 +110,7 @@ Stack:
 
 ## Trust boundary
 
-- The current public UI sends only the fictional Morrow Supply dataset. It does not require customer names, emails, addresses, phone numbers, or full order logs.
+- The default public path sends only the fictional Morrow Supply dataset. The optional CSV path accepts a bounded normalized schema and requires a redaction acknowledgement, but it cannot detect PII automatically.
 - The public demo uses bring-your-own-key access: the key stays in React memory, travels over HTTPS through CartCause's serverless function for one OpenAI request, and is cleared from the form before the fetch starts.
 - CartCause application code does not write the key to browser storage, cookies, the JSON body, a database, responses, or Vercel environment variables. The repository contains no application logger call for the key or request body.
 - A random pseudonymous session ID is stored in `localStorage` for safety-abuse correlation. The function hashes it for `safety_identifier`, and the raw value is omitted from the model input.
@@ -136,7 +145,7 @@ bun run typecheck
 bun run build
 ```
 
-The automated suite covers seeded-data arithmetic, request validation, identifier uniqueness, evidence ownership, rank integrity, and the no-money model-output boundary. The live API contract was also exercised against `gpt-5.6`, which resolved to `gpt-5.6-sol` and returned a valid parsed result.
+The automated suite covers seeded-data arithmetic, normalized CSV parsing, imported-request routing, request validation, identifier uniqueness, leak-level and per-fix evidence ownership, rank integrity, BYOK clearing, and the no-money model-output boundary. These tests do not call OpenAI. During development, a separate live contract run against `gpt-5.6` returned a valid parsed result; evaluators should treat fresh provider success as dependent on their own project access and limits.
 
 ## How Codex accelerated the build
 
@@ -157,15 +166,15 @@ The human-directed decisions that shaped the product were:
 - change the original developer-tool direction into an ecommerce product for store owners
 - make GPT-5.6 a real API feature, not only a build-time assistant
 - focus on one daily operating decision instead of a broad analytics suite
-- keep all financial arithmetic deterministic
+- keep financial arithmetic outside the model and label imported estimates honestly
 - require evidence references and an explicit claim boundary
 - stop at owner approval instead of automatically editing a live storefront
 
 ## Build Week scope
 
-This repository is a new Build Week project. The public demo deliberately uses fictional data and excludes commerce-platform authentication, automatic publishing, billing, accounts, and durable customer storage.
+This repository is a new Build Week project. The public demo deliberately starts with fictional data, includes bounded browser-side CSV normalization and an approved JSON handoff, and excludes commerce-platform authentication, automatic publishing, billing, accounts, and durable customer storage.
 
-Additional product, architecture, research, demo, submission, and [security/data-use](docs/security-and-data.md) notes are in [`docs/`](docs/).
+For a fast evidence map, see the [judge proof pack](docs/judge-proof.md). Additional product, architecture, research, demo, submission, and [security/data-use](docs/security-and-data.md) notes are in [`docs/`](docs/).
 
 ## License
 

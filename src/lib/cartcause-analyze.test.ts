@@ -8,6 +8,7 @@ import {
   parseAnalyzeRequest,
   validateModelAnalysis,
 } from './cartcause-analyze'
+import { sampleCandidates, sampleStore } from '../data/cartCause'
 
 const validRequest = {
   clientSessionId: 'session_123',
@@ -16,6 +17,11 @@ const validRequest = {
     currency: 'USD' as const,
   },
   briefDate: '2026-07-18',
+  dataUse: {
+    source: 'untrusted_normalized_csv' as const,
+    fictionalOrRedacted: true as const,
+    rawFileUploaded: false as const,
+  },
   candidates: [
     {
       id: 'cand_a',
@@ -101,6 +107,48 @@ describe('parseAnalyzeRequest', () => {
     expect(modelInput).toContain('"oneLeakPerCandidate":true')
     expect(modelInput).not.toContain(parsed.data.clientSessionId)
     expect(modelInput).not.toContain('"clientSessionId"')
+    expect(modelInput).not.toContain('estimatedLeakageCents')
+  })
+
+  it('rejects an unconfirmed data-use attestation and inconsistent return rate', () => {
+    expect(
+      parseAnalyzeRequest({
+        ...validRequest,
+        dataUse: { ...validRequest.dataUse, fictionalOrRedacted: false },
+      }).ok,
+    ).toBe(false)
+
+    expect(
+      parseAnalyzeRequest({
+        ...validRequest,
+        candidates: [
+          {
+            ...validRequest.candidates[0],
+            computed: {
+              ...validRequest.candidates[0].computed,
+              returnRateBps: 9999,
+            },
+          },
+        ],
+      }).ok,
+    ).toBe(false)
+  })
+
+  it('binds the seeded source label to the server-known fictional dataset', () => {
+    const seededRequest = {
+      ...validRequest,
+      store: sampleStore,
+      dataUse: { ...validRequest.dataUse, source: 'seeded_sample' as const },
+      candidates: sampleCandidates,
+    }
+
+    expect(parseAnalyzeRequest(seededRequest).ok).toBe(true)
+    expect(
+      parseAnalyzeRequest({
+        ...seededRequest,
+        store: { ...sampleStore, name: 'Caller-controlled store' },
+      }).ok,
+    ).toBe(false)
   })
 
   it('rejects duplicate candidate ids', () => {
@@ -163,7 +211,7 @@ describe('validateModelAnalysis', () => {
       return
     }
 
-    const result = validateModelAnalysis(parsed.data, {
+    const modelAnalysis = {
       owner_summary: 'Sizing clarity and spill-positioning look like the two strongest preventable return themes.',
       ranked_leaks: [
         {
@@ -179,6 +227,7 @@ describe('validateModelAnalysis', () => {
               type: 'size_guide',
               title: 'Add fit guidance near the buy box',
               rationale: 'Customers are already asking whether to size up, so the size choice needs explicit guidance.',
+              evidence_refs: ['ev_a_1', 'ev_a_2'],
               before: 'Lightweight running shoe.',
               after: 'Lightweight running shoe with a snug toe box; if you are between sizes or prefer extra room, size up.',
             },
@@ -198,6 +247,7 @@ describe('validateModelAnalysis', () => {
               type: 'shipping_notice',
               title: 'Clarify upright-use expectations',
               rationale: 'The current positioning needs a narrower claim that matches the reported behavior.',
+              evidence_refs: ['ev_b_1', 'ev_b_2'],
               before: 'Insulated mug for daily commutes.',
               after: 'Insulated mug designed for upright carrying; avoid storing it tipped in a packed bag.',
             },
@@ -205,9 +255,18 @@ describe('validateModelAnalysis', () => {
           what_not_to_claim: 'Do not claim the mug is leakproof in every bag position.',
         },
       ],
-    })
+    }
+    const result = validateModelAnalysis(parsed.data, modelAnalysis)
 
     expect(result.ok).toBe(true)
+
+    const fixWithoutLeakSupport = structuredClone(modelAnalysis)
+    fixWithoutLeakSupport.ranked_leaks[0]!.evidence_refs = ['ev_a_1']
+    fixWithoutLeakSupport.ranked_leaks[0]!.recommended_fixes[0]!.evidence_refs = ['ev_a_2']
+    expect(validateModelAnalysis(parsed.data, fixWithoutLeakSupport)).toEqual({
+      ok: false,
+      reason: 'Model fix must use evidence cited by its ranked leak',
+    })
   })
 
   it('rejects evidence refs from the wrong candidate', () => {
@@ -232,6 +291,7 @@ describe('validateModelAnalysis', () => {
               type: 'product_copy',
               title: 'Clarify fit',
               rationale: 'Customers need clearer fit guidance.',
+              evidence_refs: ['ev_b_1'],
               before: 'Lightweight running shoe.',
               after: 'Snug fit; size up if you prefer extra toe room.',
             },
@@ -250,6 +310,7 @@ describe('validateModelAnalysis', () => {
               type: 'product_copy',
               title: 'Clarify commuting usage',
               rationale: 'Customers need a narrower claim.',
+              evidence_refs: ['ev_b_1'],
               before: 'Insulated mug for daily commutes.',
               after: 'Designed for upright commuting use.',
             },
@@ -284,6 +345,7 @@ describe('validateModelAnalysis', () => {
               type: 'product_copy',
               title: 'Clarify fit',
               rationale: 'Customers need clearer fit guidance.',
+              evidence_refs: ['ev_a_1'],
               before: 'Lightweight running shoe.',
               after: 'Snug fit; size up if you prefer extra toe room.',
             },
@@ -302,6 +364,7 @@ describe('validateModelAnalysis', () => {
               type: 'product_copy',
               title: 'Clarify commuting usage',
               rationale: 'Customers need a narrower claim.',
+              evidence_refs: ['ev_b_1'],
               before: 'Insulated mug for daily commutes.',
               after: 'Designed for upright commuting use.',
             },

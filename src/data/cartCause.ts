@@ -45,6 +45,7 @@ export interface RecommendedFix {
   type: FixType;
   title: string;
   rationale: string;
+  evidence_refs: string[];
   before: string;
   after: string;
 }
@@ -75,6 +76,11 @@ export interface AnalyzeRequest {
   clientSessionId: string;
   store: StoreProfile;
   briefDate: string;
+  dataUse: {
+    source: "seeded_sample" | "untrusted_normalized_csv";
+    fictionalOrRedacted: true;
+    rawFileUploaded: false;
+  };
   candidates: LeakCandidate[];
 }
 
@@ -106,7 +112,7 @@ export const sampleCandidates: LeakCandidate[] = [
       estimatedLeakageCents: 84600,
       orders: 76,
       returns: 14,
-      returnRateBps: 1840,
+      returnRateBps: 1842,
       baselineReturnRateBps: 710,
     },
     evidence: [
@@ -151,7 +157,7 @@ export const sampleCandidates: LeakCandidate[] = [
       estimatedLeakageCents: 51700,
       orders: 32,
       returns: 7,
-      returnRateBps: 2190,
+      returnRateBps: 2188,
       baselineReturnRateBps: 710,
     },
     evidence: [
@@ -252,16 +258,18 @@ export const sampleAnalysisResponse: AnalyzeResponse = {
             title: "Replace the fit promise with a narrower sizing note",
             rationale:
               "Bring the PDP into line with the repeated evidence and reduce preventable first-order returns.",
+            evidence_refs: ["RET-1048", "REV-221", "PDP-11"],
             before:
               "Lightweight knit runner with all-day cushioning and a clean everyday profile. True to size fit.",
             after:
-              "Lightweight knit runner with all-day cushioning and a clean everyday profile. Most shoppers stay with their usual size, but customers with a wider forefoot often prefer a half size up.",
+              "Lightweight knit runner with all-day cushioning and a clean everyday profile. Fit feedback describes a close toe box; shoppers who prefer more room may want to consider a half size up.",
           },
           {
             type: "size_guide",
             title: "Add a two-line fit note beside size selection",
             rationale:
               "Move the clarification to the decision point instead of burying it in the FAQ.",
+            evidence_refs: ["RET-1048", "REV-221", "PDP-11"],
             before: "Fit: We recommend ordering your usual size.",
             after:
               "Fit note: Streamlined through the toe box. Between sizes or prefer extra room? Choose a half size up.",
@@ -271,9 +279,10 @@ export const sampleAnalysisResponse: AnalyzeResponse = {
             title: "Give support a standard sizing reply",
             rationale:
               "Consistent CX language keeps pre-purchase answers aligned with the revised PDP copy.",
+            evidence_refs: ["SUP-73", "RET-1048"],
             before: "General support reply with no fit guidance.",
             after:
-              "Most customers keep their usual size, but shoppers who want more room in the toe box often prefer a half size up.",
+              "Fit feedback describes a close toe box. If you prefer extra room or are between sizes, consider a half size up.",
           },
         ],
         what_not_to_claim:
@@ -293,6 +302,7 @@ export const sampleAnalysisResponse: AnalyzeResponse = {
             title: "Name the divider clearly in the first storage sentence",
             rationale:
               "Removing ambiguity is the fastest way to reduce expectation mismatch on the PDP.",
+            evidence_refs: ["RET-991", "REV-208", "PDP-42"],
             before:
               "Weekend holdall with commuter-ready organization, soft structure, and weather-minded canvas.",
             after:
@@ -303,6 +313,7 @@ export const sampleAnalysisResponse: AnalyzeResponse = {
             title: "Standardize the laptop-compartment answer",
             rationale:
               "A short CX macro reduces refund-driven confusion while the PDP update ships.",
+            evidence_refs: ["SUP-58", "RET-991"],
             before: "No standard response for laptop fit questions.",
             after:
               "The Transit Weekender has a soft interior divider rather than a padded laptop sleeve. For structured laptop protection, we recommend adding a sleeve or choosing a different bag.",
@@ -325,19 +336,21 @@ export const sampleAnalysisResponse: AnalyzeResponse = {
             title: "Surface the dispatch window above the fold",
             rationale:
               "A direct ship window near the CTA sets timing expectations before purchase intent hardens.",
+            evidence_refs: ["CAN-118", "SUP-84", "PDP-63"],
             before: "Shipping: Processing details are available in our help center.",
             after:
-              "Dispatch timing: Ships in 3 to 5 business days. You will receive tracking as soon as the set leaves our warehouse.",
+              "Dispatch timing: [Insert the current operations-approved processing window here before publishing].",
           },
           {
             type: "product_copy",
             title: "Pair the seasonal promise with the dispatch note",
             rationale:
               "This keeps the emotional headline while reducing the timing gap that is prompting cancellations.",
+            evidence_refs: ["REV-319", "PDP-63"],
             before:
               "Breathable linen bedding in washed neutrals for warmer nights and easy layering.",
             after:
-              "Breathable linen bedding in washed neutrals for warmer nights and easy layering. Ships in 3 to 5 business days.",
+              "Breathable linen bedding in washed neutrals for warmer nights and easy layering. Dispatch timing: [insert the current operations-approved processing window before publishing].",
           },
         ],
         what_not_to_claim:
@@ -382,12 +395,20 @@ export const confidenceTone: Record<
 export function buildAnalyzeRequest(
   clientSessionId: string,
   briefDate: string = sampleBriefMeta.briefDate,
+  store: StoreProfile = sampleStore,
+  candidates: LeakCandidate[] = sampleCandidates,
+  source: AnalyzeRequest["dataUse"]["source"] = "seeded_sample",
 ): AnalyzeRequest {
   return {
     clientSessionId,
-    store: sampleStore,
+    store: { ...store },
     briefDate,
-    candidates: sampleCandidates.map((candidate) => ({
+    dataUse: {
+      source,
+      fictionalOrRedacted: true,
+      rawFileUploaded: false,
+    },
+    candidates: candidates.map((candidate) => ({
       ...candidate,
       evidence: candidate.evidence.map((item) => ({ ...item })),
       currentCopy: { ...candidate.currentCopy },
@@ -491,6 +512,7 @@ export function createImplementationBrief(
   approvedFixTitles: string[],
   liveState: LiveState,
   modelName: string,
+  storeName: string = sampleStore.name,
 ): string {
   const approvedSet = new Set(approvedFixTitles);
   const fixes = leak.analysis.recommended_fixes.filter(
@@ -500,7 +522,7 @@ export function createImplementationBrief(
   return [
     `# CartCause brief for ${leak.product.name}`,
     "",
-    `Store: ${sampleStore.name} (sample store data)`,
+    `Store: ${storeName}`,
     `SKU: ${leak.product.sku}`,
     `Leak estimate: ${centsToCurrency(leak.computed.estimatedLeakageCents)}`,
     `Confidence: ${leak.analysis.confidence}`,
@@ -516,7 +538,7 @@ export function createImplementationBrief(
     "## Approved-ready fixes",
     ...fixes.map(
       (fix) =>
-        `- [${fix.type}] ${fix.title}\n  Rationale: ${fix.rationale}\n  Before: ${fix.before}\n  After: ${fix.after}`,
+        `- [${fix.type}] ${fix.title}\n  Evidence: ${fix.evidence_refs.join(", ")}\n  Rationale: ${fix.rationale}\n  Before: ${fix.before}\n  After: ${fix.after}`,
     ),
     "",
     "## What not to claim",

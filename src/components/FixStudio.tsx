@@ -5,8 +5,14 @@ import { StatusPill } from "./StatusPill";
 export interface ApprovedFixRecord {
   leakId: string;
   productName: string;
+  sku: string;
   title: string;
   type: RecommendedFix["type"];
+  rationale: string;
+  before: string;
+  after: string;
+  evidenceRefs: string[];
+  whatNotToClaim: string;
 }
 
 interface FixStudioProps {
@@ -30,6 +36,7 @@ export function FixStudio({
 
   return (
     <section
+      id="fix-studio"
       aria-labelledby="fix-studio-title"
       className="paper-panel flex h-full flex-col gap-4 p-4 md:p-5"
     >
@@ -83,6 +90,9 @@ export function FixStudio({
                   <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
                     {fix.rationale}
                   </p>
+                  <p className="mt-2 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--acid)]">
+                    Grounded in {fix.evidence_refs.join(" · ")}
+                  </p>
                 </div>
                 <Sparkle
                   size={18}
@@ -114,19 +124,23 @@ export function FixStudio({
                 <button
                   type="button"
                   onClick={() => onApprove(fix)}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--acid)_42%,transparent)] bg-[color:color-mix(in_srgb,var(--acid)_16%,transparent)] px-4 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[color:color-mix(in_srgb,var(--acid)_22%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--acid)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
+                  disabled={isApproved}
+                  aria-pressed={isApproved}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--acid)_42%,transparent)] bg-[color:color-mix(in_srgb,var(--acid)_16%,transparent)] px-4 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[color:color-mix(in_srgb,var(--acid)_22%,transparent)] disabled:cursor-default disabled:border-[color:color-mix(in_srgb,var(--acid)_28%,transparent)] disabled:bg-[color:color-mix(in_srgb,var(--acid)_9%,transparent)] disabled:text-[var(--ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--acid)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
                 >
                   <CheckCircle size={18} aria-hidden="true" />
-                  Approve fix
+                  {isApproved ? "Approved" : "Approve fix"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onReject(fix)}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-semibold text-[var(--ink-soft)] transition hover:border-white/20 hover:text-[var(--paper)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--paper)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
-                >
-                  <XCircle size={18} aria-hidden="true" />
-                  Remove
-                </button>
+                {isApproved ? (
+                  <button
+                    type="button"
+                    onClick={() => onReject(fix)}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-semibold text-[var(--ink-soft)] transition hover:border-white/20 hover:text-[var(--paper)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--paper)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
+                  >
+                    <XCircle size={18} aria-hidden="true" />
+                    Undo approval
+                  </button>
+                ) : null}
               </div>
             </li>
           );

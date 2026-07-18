@@ -16,14 +16,14 @@ CartCause is not a general analytics dashboard, chatbot, returns portal, or copy
 
 > Which product promise leaked margin yesterday, what evidence supports that diagnosis, and what is the smallest safe change I can approve now?
 
-Existing tools often separate revenue, returns, reviews, and customer support. Owners compensate with spreadsheets and manual reading. CartCause combines those signals without pretending the model can prove causality. Computed money stays deterministic; GPT-5.6 supplies semantic ranking, bounded hypotheses, evidence selection, and fix drafts.
+Existing tools often separate revenue, returns, reviews, and customer support. Owners compensate with spreadsheets and manual reading. CartCause combines those signals without pretending the model can prove causality or verify imported financial estimates. GPT-5.6 supplies semantic ranking, bounded hypotheses, evidence selection, and fix drafts while monetary fields stay outside the model.
 
 ## Core experience
 
 ### 1. Morning brief
 
 - Shows one clearly labeled sample store and brief date
-- Leads with total estimated leakage computed from the seeded inputs
+- Leads with a fictional leakage total from fixed seeded inputs
 - Ranks three candidate leaks by urgency
 - Distinguishes computed metrics from GPT-5.6 analysis
 - Provides one primary action: `Run live GPT-5.6 brief`
@@ -45,8 +45,17 @@ Existing tools often separate revenue, returns, reviews, and customer support. O
 ### 4. Approved today
 
 - Collects the accepted fixes into a compact implementation brief
-- Copies a clean handoff for the store or CX team
+- Copies a clean handoff or downloads a structured JSON patch bundle for the store or CX team
 - Does not auto-publish or modify a live storefront
+
+### 5. Normalized intake
+
+- Parses the provided 14-column CSV schema entirely in the browser
+- Validates candidate counts, evidence ownership, numeric bounds, and repeated product fields
+- Computes return rates locally rather than trusting a spreadsheet formula
+- Labels imported leakage estimates as user-supplied and not independently verified
+- Requires a fictional/redacted-data acknowledgement before imported fields can enter a live request
+- Sends normalized fields only; the raw file is never uploaded
 
 ## Seeded demonstration
 
@@ -63,13 +72,14 @@ The sample total is $1,652. These are fictional computed inputs for product demo
 ## Three-minute demo story
 
 1. Open Morrow Supply's morning brief.
-2. Explain that CartCause has already computed the order and return metrics locally.
+2. Explain that CartCause recomputes return rates locally while the fictional leakage estimates are fixed inputs.
 3. Run the live GPT-5.6 brief.
 4. Open CloudForm Runner and inspect the evidence IDs behind the top hypothesis.
 5. Compare the current `true to size` claim with the proposed fit patch.
 6. Approve the product-copy fix and CX macro.
-7. Copy the `Approved today` implementation brief.
-8. Open the model-boundary note: arithmetic is deterministic, GPT-5.6 ranks evidence and drafts bounded fixes, and the fictional sample contains no customer PII.
+7. Download the `Approved today` patch bundle.
+8. Load the fictional CSV template to prove the same candidate/evidence packet can be normalized locally.
+9. Open the model-boundary note: imported estimates are labeled, GPT-5.6 receives no leakage amount, and the fictional sample contains no customer PII.
 
 ## Meaningful GPT-5.6 role
 
@@ -93,7 +103,7 @@ GPT-5.6 returns:
 - approval-ready fixes
 - a `what_not_to_claim` boundary
 
-The output schema contains no monetary field. The server validates candidate IDs, rank uniqueness, and evidence ownership before returning results. The browser merges model analysis with the original deterministic metrics.
+The output schema contains no monetary field. The server validates candidate IDs, rank uniqueness, and evidence ownership before returning results. It also binds `seeded_sample` to the exact server-known fictional dataset; every imported packet is labeled untrusted. The browser merges model analysis with the original provided metrics.
 
 ## Trust and privacy boundary
 
@@ -107,7 +117,7 @@ The output schema contains no monetary field. The server validates candidate IDs
 - Every causal statement is framed as a hypothesis with confidence and evidence.
 - A live API failure leaves the labeled sample brief intact and never masquerades as a successful model response.
 
-The current public UI uses fictional data only, and the file control is preview-only. Real-data use would require separate authentication, redaction, retention, logging, and compliance work. See [Security, API Key, and Data Use](security-and-data.md).
+The default public UI uses fictional data. The optional importer reads and validates only the documented normalized CSV schema in the browser, never uploads the raw file, and requires a fictional/redacted-data acknowledgement before a live request. It does not detect PII automatically. Real-store use would still require authentication, automated redaction, retention, logging, and compliance work. See [Security, API Key, and Data Use](security-and-data.md).
 
 ## Visual direction
 
@@ -130,6 +140,8 @@ Ship:
 - ranked leak selection and evidence mapping
 - product-copy, sizing, CX, and shipping fix proposals
 - approve, reject, and copy implementation brief actions
+- normalized CSV import with a one-click fictional template
+- human-approved JSON patch-bundle export
 - model-boundary disclosure
 - public responsive deployment with no login
 
@@ -150,6 +162,7 @@ Do not ship:
 - A real GPT-5.6 call returns strict structured output.
 - Monetary values shown in the UI originate only from validated input metrics.
 - Every cited evidence ID maps to visible evidence for the same candidate.
+- Every proposed fix cites its own subset of the parent leak evidence.
 - Invalid model references fail closed with a clear error.
 
 ### Design

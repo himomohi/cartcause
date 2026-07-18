@@ -10,9 +10,10 @@ import { StatusPill } from "./StatusPill";
 
 interface EvidencePanelProps {
   leak: MergedLeak;
+  dataLabel: string;
 }
 
-export function EvidencePanel({ leak }: EvidencePanelProps) {
+export function EvidencePanel({ leak, dataLabel }: EvidencePanelProps) {
   const confidence = confidenceTone[leak.analysis.confidence];
 
   return (
@@ -73,7 +74,7 @@ export function EvidencePanel({ leak }: EvidencePanelProps) {
             )}
           </dd>
           <p className="mt-2 text-sm text-[var(--ink-soft)]">
-            Computed locally from sample store data.
+            Computed locally from {dataLabel.toLowerCase()} data.
           </p>
         </div>
         <div className="rounded-[1.6rem] border border-white/8 bg-[var(--surface)] p-4">
@@ -84,7 +85,7 @@ export function EvidencePanel({ leak }: EvidencePanelProps) {
             {leak.computed.returns}
           </dd>
           <p className="mt-2 text-sm text-[var(--ink-soft)]">
-            From {leak.computed.orders} sample orders in this cluster.
+            From {leak.computed.orders} orders in this cluster.
           </p>
         </div>
       </dl>
