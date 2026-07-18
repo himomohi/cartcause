@@ -13,7 +13,7 @@ import {
   parseAnalyzeRequest,
   validateModelAnalysis,
   analyzeResponseFormat,
-} from '../src/lib/cartcause-analyze'
+} from '../src/lib/cartcause-analyze.js'
 
 type ApiErrorBody = {
   error: {
