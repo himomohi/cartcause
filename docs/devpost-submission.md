@@ -101,7 +101,26 @@ The displayed financial values are fictional sample metrics. The live model resp
 
 ## URLs to complete
 
-- Live app:
+- Live app: https://cartcause.vercel.app
 - Public repository: https://github.com/himomohi/cartcause
 - Public YouTube demo:
 - Primary Codex `/feedback` Session ID: 019f740e-fa9f-7e82-b43f-1491c42322f5
+
+## YouTube metadata
+
+### Title
+
+CartCause — GPT-5.6 Profit Leak Brief | OpenAI Build Week
+
+### Description
+
+CartCause turns ecommerce returns, reviews, support notes, and product promises into one daily profit-leak brief with evidence-linked, approval-ready fixes.
+
+Live app: https://cartcause.vercel.app
+Public repository: https://github.com/himomohi/cartcause
+
+Built during OpenAI Build Week with Codex, GPT-5.6, the OpenAI Responses API, Structured Outputs, React, TypeScript, Vite, Tailwind CSS, and Vercel.
+
+The public live path uses a temporary bring-your-own OpenAI API key. The key stays only in browser memory, is cleared when the request starts, and is never stored by CartCause.
+
+Narration uses an AI-generated OpenAI voice.

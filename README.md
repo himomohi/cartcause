@@ -2,6 +2,8 @@
 
 **Daily profit leak brief with approve-ready fixes for founder-led ecommerce stores.**
 
+[Open the live CartCause demo](https://cartcause.vercel.app)
+
 ![CartCause editorial concept](public/assets/cartcause-editorial.png)
 
 CartCause connects deterministic order and return metrics with the language hidden in reviews, support notes, return reasons, and product-page promises. GPT-5.6 ranks the likely causes, cites the evidence behind each hypothesis, and drafts the smallest product-page or CX changes an owner can approve today.
