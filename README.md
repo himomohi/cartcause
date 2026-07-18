@@ -33,6 +33,7 @@ The serverless `/api/analyze` endpoint uses the OpenAI Responses API with:
 - model alias `gpt-5.6`
 - medium reasoning effort
 - `store: false`
+- a request-scoped API key supplied by the user at run time
 - a privacy-preserving hashed `safety_identifier`
 - Zod Structured Outputs through `zodTextFormat`
 
@@ -52,6 +53,7 @@ The browser then merges the validated analysis with the original deterministic m
 ```text
 React browser app
   -> fictional candidate metrics and redacted evidence
+  -> request-scoped API key held in tab memory
   -> POST /api/analyze
   -> Zod request validation
   -> OpenAI Responses API with GPT-5.6
@@ -75,7 +77,8 @@ Stack:
 
 - The demo requires no customer names, emails, addresses, phone numbers, or full order logs.
 - Only bounded sample aggregates and short evidence excerpts reach the model.
-- `OPENAI_API_KEY` is server-only and never exposed to Vite.
+- The public demo uses bring-your-own-key access: the key stays in React memory, is sent only over HTTPS for the current request, and is cleared immediately after each live call starts.
+- CartCause never writes the key to browser storage, cookies, application logs, responses, or Vercel environment variables.
 - A failed live request leaves the clearly labeled sample brief intact.
 - CartCause does not write to a store, auto-publish changes, or persist customer data.
 - Model hypotheses always include confidence, evidence IDs, and a limit on what may be claimed.
@@ -85,16 +88,16 @@ Stack:
 Requirements:
 
 - Bun 1.3+
-- an OpenAI API key with access to GPT-5.6
+- an OpenAI API key with access to GPT-5.6 for the optional live brief
 
 ```bash
 bun install
-cp .env.example .env
-# Add OPENAI_API_KEY to .env
 bun run dev
 ```
 
-The static sample experience runs through Vite. Use a serverless-compatible local runtime or a Vercel deployment to exercise `/api/analyze` from the UI.
+The static sample experience runs without a key. In the deployed app, paste a key into the **Bring your own key** panel to exercise `/api/analyze`; it remains only in that tab's memory. Use a serverless-compatible local runtime to exercise the same endpoint locally.
+
+The public deployment does not require a server-side `OPENAI_API_KEY` environment variable.
 
 ## Verification
 

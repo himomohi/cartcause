@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  analyzeApiKeyHeader,
   buildAnalyzeInput,
   createSafetyIdentifier,
+  parseAnalyzeApiKeyHeader,
   parseAnalyzeRequest,
   validateModelAnalysis,
 } from './cartcause-analyze'
@@ -126,6 +128,27 @@ describe('parseAnalyzeRequest', () => {
     })
 
     expect(parsed.ok).toBe(false)
+  })
+})
+
+describe('parseAnalyzeApiKeyHeader', () => {
+  it('accepts a trimmed request-scoped api key', () => {
+    const parsed = parseAnalyzeApiKeyHeader('  sk-test-123  ')
+
+    expect(parsed).toEqual({
+      ok: true,
+      data: 'sk-test-123',
+    })
+  })
+
+  it('rejects a missing request-scoped api key', () => {
+    const parsed = parseAnalyzeApiKeyHeader(undefined)
+
+    expect(parsed.ok).toBe(false)
+    expect(parsed).toEqual({
+      ok: false,
+      message: `Missing ${analyzeApiKeyHeader} header.`,
+    })
   })
 })
 

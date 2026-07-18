@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAnalyzeRequest,
+  buildAnalyzeRequestHeaders,
+  isSecureApiKeyTransport,
+  LIVE_API_KEY_HEADER,
   mergeRankedLeaks,
   sampleAnalysisResponse,
   sampleBriefMeta,
@@ -19,6 +22,27 @@ describe("buildAnalyzeRequest", () => {
       briefDate: sampleBriefMeta.briefDate,
       candidates: sampleCandidates,
     });
+  });
+});
+
+describe("buildAnalyzeRequestHeaders", () => {
+  it("places the api key in the analyze request header shape", () => {
+    expect(buildAnalyzeRequestHeaders("  sk-test-123  ")).toEqual({
+      "Content-Type": "application/json",
+      [LIVE_API_KEY_HEADER]: "sk-test-123",
+    });
+  });
+});
+
+describe("isSecureApiKeyTransport", () => {
+  it("allows https and local loopback contexts", () => {
+    expect(isSecureApiKeyTransport("https:", "cartcause.app")).toBe(true);
+    expect(isSecureApiKeyTransport("http:", "localhost")).toBe(true);
+    expect(isSecureApiKeyTransport("http:", "127.0.0.1")).toBe(true);
+  });
+
+  it("rejects non-local http origins", () => {
+    expect(isSecureApiKeyTransport("http:", "example.com")).toBe(false);
   });
 });
 

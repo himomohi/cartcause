@@ -20,6 +20,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -28,10 +29,9 @@
     "@types/react-dom": "^19.2.3",
     "@vercel/node": "^5.8.26",
     "@vitejs/plugin-react": "^6.0.3",
-    "@tailwindcss/vite": "^4.1.18",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.1.18",
-    "typescript": "^7.0.2",
+    "typescript": "5.9.3",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"
   }

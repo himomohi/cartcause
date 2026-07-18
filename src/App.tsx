@@ -1,9 +1,12 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwise,
   ChartLine,
   ClockCountdown,
+  Eye,
+  EyeSlash,
   Flask,
+  Key,
   Package,
   Sparkle,
   SpinnerGap,
@@ -18,8 +21,10 @@ import { LeakRail } from "./components/LeakRail";
 import { StatusPill } from "./components/StatusPill";
 import {
   buildAnalyzeRequest,
+  buildAnalyzeRequestHeaders,
   centsToCurrency,
   createImplementationBrief,
+  isSecureApiKeyTransport,
   mergeRankedLeaks,
   sampleAnalysisResponse,
   sampleBriefMeta,
@@ -116,6 +121,9 @@ export default function App() {
   const [approvedRecords, setApprovedRecords] = useState<Record<string, ApprovedFixRecord>>({});
   const [uploadPreview, setUploadPreview] = useState<UploadPreviewState | null>(null);
   const [copiedBrief, setCopiedBrief] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const apiKeyInputRef = useRef<HTMLInputElement>(null);
   const [briefDate] = useState(sampleBriefMeta.briefDate);
   const [clientSessionId] = useState(readSessionId);
 
@@ -147,6 +155,12 @@ export default function App() {
     return () => window.clearTimeout(timeoutId);
   }, [copiedBrief]);
 
+  useEffect(() => {
+    if (apiKey.trim()) {
+      setErrorMessage(null);
+    }
+  }, [apiKey]);
+
   const approvedItems = useMemo(
     () =>
       Object.values(approvedRecords).sort((left, right) =>
@@ -158,22 +172,64 @@ export default function App() {
   const approvedTitlesForSelected = approvedItems
     .filter((item) => item.leakId === selectedLeak?.id)
     .map((item) => item.title);
+  const hasApiKey = apiKey.trim().length > 0;
+  const secureApiKeyTransport =
+    typeof window === "undefined"
+      ? true
+      : isSecureApiKeyTransport(window.location.protocol, window.location.hostname);
+  const keyMessage = !hasApiKey
+    ? "Enter a key to enable live mode. It stays in tab memory until you run, then is sent over HTTPS to OpenAI and cleared. Never stored."
+    : secureApiKeyTransport
+      ? "Held in tab memory only until the live request starts, then cleared immediately. Never written to browser storage or cookies."
+      : "Live key submission requires HTTPS outside localhost.";
+  const liveButtonDisabled = liveState === "analyzing" || !secureApiKeyTransport;
 
   async function handleRunLiveBrief() {
+    if (!hasApiKey) {
+      setLiveState("error");
+      setErrorMessage("Enter an API key before requesting the live brief.");
+      window.requestAnimationFrame(() => apiKeyInputRef.current?.focus());
+      return;
+    }
+
+    if (!secureApiKeyTransport) {
+      setLiveState("error");
+      setErrorMessage("Live key submission requires HTTPS outside localhost.");
+      return;
+    }
+
     setLiveState("analyzing");
     setErrorMessage(null);
 
     try {
+      const requestHeaders = buildAnalyzeRequestHeaders(apiKey);
+      const requestBody = JSON.stringify(buildAnalyzeRequest(clientSessionId, briefDate));
+
+      setApiKey("");
+      setShowApiKey(false);
+
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(buildAnalyzeRequest(clientSessionId, briefDate)),
+        cache: "no-store",
+        headers: requestHeaders,
+        body: requestBody,
       });
 
       if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+        let message = `Request failed with status ${response.status}`;
+
+        try {
+          const payload = (await response.json()) as {
+            error?: { message?: string };
+          };
+          if (payload.error?.message) {
+            message = payload.error.message;
+          }
+        } catch {
+          // Keep the status-based fallback message.
+        }
+
+        throw new Error(message);
       }
 
       const payload = (await response.json()) as AnalyzeResponse;
@@ -181,14 +237,16 @@ export default function App() {
       startTransition(() => {
         setAnalysisResponse(payload);
         setLiveState(payload.meta.live ? "success" : "sample");
+        setShowApiKey(false);
       });
     } catch (error) {
       setLiveState("error");
       setErrorMessage(
         error instanceof Error
-          ? error.message
-          : "Unknown error while requesting the live brief.",
+          ? `${error.message} Re-enter your API key to retry.`
+          : "Unknown error while requesting the live brief. Re-enter your API key to retry.",
       );
+      window.requestAnimationFrame(() => apiKeyInputRef.current?.focus());
     }
   }
 
@@ -248,6 +306,16 @@ export default function App() {
       setCopiedBrief(false);
       setErrorMessage("Clipboard access failed. Please retry in a secure context.");
     }
+  }
+
+  function handleClearApiKey() {
+    setApiKey("");
+    setShowApiKey(false);
+    setErrorMessage(null);
+    if (liveState === "error") {
+      setLiveState("sample");
+    }
+    window.requestAnimationFrame(() => apiKeyInputRef.current?.focus());
   }
 
   function handlePreviewUpload(file: File | null) {
@@ -371,16 +439,23 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleRunLiveBrief}
-                    disabled={liveState === "analyzing"}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--coral)_48%,transparent)] bg-[var(--paper)] px-5 py-3 text-sm font-semibold text-[var(--ink)] transition hover:translate-y-[-1px] hover:shadow-[0_16px_34px_rgba(254,137,111,0.28)] disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
+                    disabled={liveButtonDisabled}
+                    aria-describedby="live-brief-key-hint"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--coral)_48%,transparent)] bg-[var(--paper)] px-5 py-3 text-sm font-semibold text-[var(--ink)] transition hover:translate-y-[-1px] hover:shadow-[0_16px_34px_rgba(254,137,111,0.28)] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]"
                   >
                     {liveState === "analyzing" ? (
                       <SpinnerGap size={18} className="animate-spin" aria-hidden="true" />
                     ) : (
                       <Sparkle size={18} aria-hidden="true" />
                     )}
-                    Run live GPT-5.6 brief
+                    {hasApiKey ? "Run live GPT-5.6 brief" : "Add key to run GPT-5.6"}
                   </button>
+
+                  <p id="live-brief-key-hint" className="text-xs leading-5 text-[var(--ink-soft)]">
+                    {hasApiKey
+                      ? "Your key is ready for one request and is not persisted."
+                      : "Select this button to focus the temporary key field; the key is sent only when you run."}
+                  </p>
 
                   <button
                     type="button"
@@ -423,6 +498,82 @@ export default function App() {
                         Local code computes the arithmetic. GPT-5.6 ranks likely causes and
                         drafts fix language. Live failures never replace the seeded sample.
                       </p>
+                    </div>
+                    <div className="rounded-[1.4rem] border border-black/10 bg-[var(--paper)] p-4 text-[var(--ink)] shadow-[0_12px_32px_rgba(9,12,15,0.14)]">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[var(--coral-deep)]">
+                            Bring your own key
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
+                            Use a temporary OpenAI project key you can revoke after this live request. CartCause does not keep it.
+                          </p>
+                        </div>
+                        <span className="light-chip">
+                          <Key size={14} aria-hidden="true" />
+                          <span className="ml-2">Request-scoped</span>
+                        </span>
+                      </div>
+
+                      <div className="mt-4">
+                        <label
+                          htmlFor="live-api-key"
+                          className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[var(--ink-muted)]"
+                        >
+                          OpenAI API key
+                        </label>
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            ref={apiKeyInputRef}
+                            id="live-api-key"
+                            type={showApiKey ? "text" : "password"}
+                            value={apiKey}
+                            onChange={(event) => setApiKey(event.target.value)}
+                            autoComplete="new-password"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            inputMode="text"
+                            placeholder="sk-proj-..."
+                            aria-describedby="live-api-key-note"
+                            className="editorial-input min-h-12 flex-1 px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral)]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowApiKey((current) => !current)}
+                            className="inline-flex min-h-12 items-center gap-2 rounded-[1rem] border border-black/12 bg-white/40 px-4 py-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral)]"
+                            aria-pressed={showApiKey}
+                            aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                          >
+                            {showApiKey ? (
+                              <EyeSlash size={18} aria-hidden="true" />
+                            ) : (
+                              <Eye size={18} aria-hidden="true" />
+                            )}
+                            {showApiKey ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                          <p
+                            id="live-api-key-note"
+                            className={[
+                              "text-sm leading-6",
+                              hasApiKey && secureApiKeyTransport
+                                ? "text-[var(--ink-muted)]"
+                                : "text-[var(--coral-deep)]",
+                            ].join(" ")}
+                          >
+                            {keyMessage}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleClearApiKey}
+                            className="inline-flex min-h-11 items-center rounded-full border border-black/12 px-4 py-2 text-sm font-semibold text-[var(--ink)] transition hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral)]"
+                          >
+                            Clear key
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     <div className="rounded-[1.4rem] border border-white/8 bg-[var(--surface)] p-4">
                       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
@@ -472,7 +623,7 @@ export default function App() {
                   {liveState === "success" ? (
                     <span className="inline-flex items-center gap-2 text-[var(--paper)]">
                       <Flask size={16} aria-hidden="true" />
-                      Live analysis merged into the sample brief by `candidate_id`.
+                      Live analysis merged into the sample brief by `candidate_id`. The request key has already been cleared from tab memory.
                     </span>
                   ) : null}
                   {liveState === "error" ? (
@@ -485,7 +636,7 @@ export default function App() {
                   {liveState === "sample" ? (
                     <span className="inline-flex items-center gap-2 text-[var(--paper)]">
                       <ClockCountdown size={16} aria-hidden="true" />
-                      Sample mode is active. Run the live brief when `/api/analyze` is ready.
+                      Sample mode is active. Add your key, then run the live brief when `/api/analyze` is ready.
                     </span>
                   ) : null}
                 </div>

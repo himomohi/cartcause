@@ -21,6 +21,7 @@ const MAX_FIX_COUNT = 4
 const MIN_EVIDENCE_PER_CANDIDATE = 2
 const MAX_EVIDENCE_PER_CANDIDATE = 12
 const MAX_REQUEST_BYTES = 250_000
+const OPENAI_API_KEY_HEADER = 'x-openai-api-key'
 const MONEY_PATTERN =
   /(?:\$|USD\b|US dollars?\b|dollars?\b|cents?\b|\b\d[\d,]*(?:\.\d+)?\s*(?:usd|dollars?|cents?)\b)/i
 
@@ -192,9 +193,29 @@ export type SemanticValidationResult =
   | { ok: false; reason: string }
 
 export const analyzeResponseFormat = ModelOutputSchema
+export const analyzeApiKeyHeader = OPENAI_API_KEY_HEADER
 
 export function getMaxRequestBytes(): number {
   return MAX_REQUEST_BYTES
+}
+
+export function parseAnalyzeApiKeyHeader(
+  value: string | string[] | undefined,
+): ValidationResult<string> {
+  const headerValue = Array.isArray(value) ? value[0] : value
+  const apiKey = headerValue?.trim()
+
+  if (!apiKey) {
+    return {
+      ok: false,
+      message: `Missing ${OPENAI_API_KEY_HEADER} header.`,
+    }
+  }
+
+  return {
+    ok: true,
+    data: apiKey,
+  }
 }
 
 export function parseAnalyzeRequest(input: unknown): ValidationResult<AnalyzeRequest> {

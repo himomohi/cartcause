@@ -100,7 +100,7 @@ The output schema contains no monetary field. The server validates candidate IDs
 - Customer names, emails, addresses, phone numbers, and full order records are never required.
 - The demo sends only aggregates, short redacted excerpts, and pseudonymous identifiers.
 - The OpenAI request uses `store: false`.
-- The API key remains server-side.
+- The public demo uses a request-scoped bring-your-own-key flow: the key stays in tab memory only until the live request starts, travels only over HTTPS, and is never persisted.
 - The model does not calculate or invent loss amounts.
 - Every causal statement is framed as a hypothesis with confidence and evidence.
 - A live API failure leaves the labeled sample brief intact and never masquerades as a successful model response.

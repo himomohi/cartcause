@@ -5,6 +5,7 @@
 - [ ] Public app is reachable without login
 - [ ] Fictional Morrow Supply sample works without private data
 - [ ] Live GPT-5.6 structured analysis succeeds
+- [ ] BYOK key clears on refresh and is absent from browser storage, logs, responses, and Vercel environment variables
 - [ ] Monetary metrics originate only from validated sample inputs
 - [ ] Every model evidence reference maps to the same visible candidate
 - [ ] Approve, reject, and copy implementation brief work
@@ -17,7 +18,7 @@
 - [ ] Public repository exists
 - [ ] License is included
 - [ ] `.env` is ignored and absent from history
-- [ ] `.env.example` documents required variables without secrets
+- [ ] Public deployment requires no server-side API-key environment variable
 - [ ] README includes setup and test instructions
 - [ ] README explains how Codex accelerated the build
 - [ ] README identifies key human product and design decisions

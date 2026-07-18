@@ -82,6 +82,8 @@ export interface MergedLeak extends LeakCandidate {
   analysis: RankedLeak;
 }
 
+export const LIVE_API_KEY_HEADER = "X-OpenAI-Api-Key";
+
 export const sampleStore: StoreProfile = {
   name: "Morrow Supply",
   currency: "USD",
@@ -393,6 +395,28 @@ export function buildAnalyzeRequest(
       computed: { ...candidate.computed },
     })),
   };
+}
+
+export function buildAnalyzeRequestHeaders(apiKey: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    [LIVE_API_KEY_HEADER]: apiKey.trim(),
+  };
+}
+
+export function isSecureApiKeyTransport(
+  protocol: string,
+  hostname: string,
+): boolean {
+  if (protocol === "https:") {
+    return true;
+  }
+
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1"
+  );
 }
 
 export function mergeRankedLeaks(

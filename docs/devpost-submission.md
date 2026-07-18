@@ -54,6 +54,8 @@ The model never calculates the financial values shown in the interface. The serv
 
 The app uses a pseudonymous hashed safety identifier and sends no customer PII. A live API failure never disguises sample data as model output.
 
+The public deployment uses a request-scoped bring-your-own-key flow. A key is held only in React memory for the active tab, sent over HTTPS to the same-origin function, and never written to browser storage, logs, responses, or Vercel environment variables.
+
 The editorial campaign visual was produced with the built-in ImageGen tool and integrated into the actual product experience.
 
 ### How we used Codex
@@ -91,7 +93,7 @@ The next step is a privacy-preserving import flow for normalized store exports, 
 1. Open the public app. No login is required.
 2. Review the clearly labeled Morrow Supply sample brief.
 3. Choose any ranked leak candidate to update the evidence and Fix Studio panels.
-4. Select `Run live GPT-5.6 brief` to replace the seeded semantic analysis with a live structured response.
+4. For the optional live path, enter an OpenAI API key with GPT-5.6 access in `Bring your own key`, then select `Run live GPT-5.6 brief`. The key is cleared immediately after the request starts, or on refresh or `Clear key`.
 5. Approve a fix and confirm it appears in `Approved today`.
 6. Select `Copy implementation brief`.
 
@@ -102,4 +104,4 @@ The displayed financial values are fictional sample metrics. The live model resp
 - Live app:
 - Public repository: https://github.com/himomohi/cartcause
 - Public YouTube demo:
-- Primary Codex `/feedback` Session ID:
+- Primary Codex `/feedback` Session ID: 019f740e-fa9f-7e82-b43f-1491c42322f5

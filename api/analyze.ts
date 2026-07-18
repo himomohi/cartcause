@@ -4,10 +4,12 @@ import { zodTextFormat } from 'openai/helpers/zod'
 
 import {
   AnalyzeSuccessSchema,
+  analyzeApiKeyHeader,
   buildAnalyzeInput,
   buildAnalyzeInstructions,
   createSafetyIdentifier,
   getMaxRequestBytes,
+  parseAnalyzeApiKeyHeader,
   parseAnalyzeRequest,
   validateModelAnalysis,
   analyzeResponseFormat,
@@ -23,7 +25,13 @@ type ApiErrorBody = {
 
 const MAX_REQUEST_BYTES = getMaxRequestBytes()
 
+function setNoStoreHeaders(res: VercelResponse): void {
+  res.setHeader('Cache-Control', 'no-store, max-age=0')
+  res.setHeader('Pragma', 'no-cache')
+}
+
 function sendJson(res: VercelResponse, status: number, payload: ApiErrorBody | unknown): void {
+  setNoStoreHeaders(res)
   res.status(status).json(payload)
 }
 
@@ -93,9 +101,9 @@ async function readJsonBody(req: VercelRequest): Promise<unknown> {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
 }
 
-function getOpenAIClient(): OpenAI {
+function getOpenAIClient(apiKey: string): OpenAI {
   return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey,
   })
 }
 
@@ -116,8 +124,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    sendError(res, 503, 'missing_api_key', 'Live analysis is not configured.', true)
+  const requestApiKey = parseAnalyzeApiKeyHeader(req.headers[analyzeApiKeyHeader])
+  if (!requestApiKey.ok) {
+    sendError(res, 400, 'missing_api_key', requestApiKey.message, false)
     return
   }
 
@@ -143,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   try {
     const request = parsedRequest.data
-    const client = getOpenAIClient()
+    const client = getOpenAIClient(requestApiKey.data)
     const response = await client.responses.parse({
       model: 'gpt-5.6',
       store: false,

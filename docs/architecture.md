@@ -5,6 +5,7 @@
 ```text
 Browser
   -> seeded or normalized ecommerce candidate metrics
+  -> request-scoped API key held in React memory until the live request starts
   -> POST /api/analyze
   -> Zod request validation
   -> OpenAI Responses API, model gpt-5.6
@@ -23,7 +24,7 @@ Browser
 - Seeded fictional store data for a no-login public demo
 - Browser state for leak selection, live analysis, and approved fixes
 
-The client owns metric display, candidate selection, evidence navigation, approval state, and implementation-brief copy. It never receives the OpenAI API key.
+The client owns metric display, candidate selection, evidence navigation, approval state, implementation-brief copy, and the temporary BYOK field. The key exists only in React memory for the current tab, is sent in the `x-openai-api-key` request header, and is cleared from React state as soon as the live request begins.
 
 ## Serverless endpoint
 
@@ -39,17 +40,22 @@ Request fields:
 - bounded evidence excerpts with typed IDs
 - current product description and FAQ
 
+Request header:
+
+- `x-openai-api-key`: the user's request-scoped OpenAI key
+
 Server responsibilities:
 
-1. Reject non-POST methods and invalid JSON.
+1. Reject non-POST methods, missing request keys, and invalid JSON.
 2. Validate counts, types, bounded strings, and identifier uniqueness.
-3. Hash the client session into a privacy-preserving safety identifier.
-4. Call `openai.responses.parse` with `gpt-5.6`.
-5. Use `zodTextFormat` for strict structured output.
-6. Validate that every candidate appears exactly once and ranks are unique.
-7. Validate that evidence references exist and belong to the cited candidate.
-8. Return analysis without raw provider output or payload logs.
-9. Map validation, configuration, rate-limit, refusal, provider, and unexpected failures to explicit safe errors.
+3. Instantiate the OpenAI client with the request-scoped key without persisting or logging it.
+4. Hash the client session into a privacy-preserving safety identifier.
+5. Call `openai.responses.parse` with `gpt-5.6`.
+6. Use `zodTextFormat` for strict structured output.
+7. Validate that every candidate appears exactly once and ranks are unique.
+8. Validate that evidence references exist and belong to the cited candidate.
+9. Return analysis without raw provider output, credentials, or payload logs, and mark responses `no-store`.
+10. Map validation, rate-limit, refusal, provider, and unexpected failures to explicit safe errors.
 
 ## Model configuration
 
@@ -83,19 +89,21 @@ Client:
 
 Server:
 
-- 400 invalid request
+- 400 invalid request or missing request key
 - 405 invalid method
 - 429 upstream rate limit
 - 502 refusal, invalid structured result, or provider failure
-- 503 missing server configuration
 - 500 unexpected failure
 
 The seeded brief is always labeled as sample data. A live failure never silently replaces it with fabricated success.
 
 ## Security and privacy boundaries
 
-- `.env` and all environment variants are ignored, except `.env.example`.
-- Only the server reads `OPENAI_API_KEY`.
+- The key is held only in React memory and is cleared as soon as a live request begins, on refresh, or on **Clear key**.
+- Browser storage, cookies, database storage, and Vercel environment variables are not used for the key.
+- The key is sent only from HTTPS origins, with localhost allowed for development.
+- The server uses the request header only to instantiate the OpenAI client; it never logs or returns the key.
+- The endpoint marks responses `Cache-Control: no-store` and `Pragma: no-cache`.
 - No customer PII is required by the contract.
 - Inputs are bounded and validated before the provider call.
 - HTML is never injected from model or evidence text.
@@ -107,8 +115,8 @@ The seeded brief is always labeled as sample data. A live failure never silently
 
 - Vercel static deployment for the Vite client
 - Vercel Function for `/api/analyze`
-- production `OPENAI_API_KEY` configured in Vercel
 - public app with no login
+- request-scoped bring-your-own-key access for live GPT-5.6 analysis
 - fictional seeded data remains fully testable
 - app remains available through the judging window
 
