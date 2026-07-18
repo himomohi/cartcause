@@ -1,0 +1,149 @@
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/newsreader";
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --ink: #0e1318;
+  --ink-strong: #11161b;
+  --ink-soft: rgba(237, 231, 218, 0.72);
+  --ink-muted: rgba(32, 39, 44, 0.66);
+  --paper: #efe6d6;
+  --paper-shadow: rgba(10, 13, 16, 0.32);
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  --coral: #fe896f;
+  --coral-deep: #b83d2c;
+  --acid: #b7d83f;
+  --font-editorial: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Manrope Variable", "Avenir Next", sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-height: 100%;
+    background: var(--ink);
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(254, 137, 111, 0.14), transparent 28%),
+      radial-gradient(circle at 85% 14%, rgba(183, 216, 63, 0.1), transparent 18%),
+      linear-gradient(180deg, #121922 0%, #0e1318 48%, #0a0f13 100%);
+    color: var(--paper);
+    font-family: var(--font-ui);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgba(254, 137, 111, 0.28);
+    color: var(--paper);
+  }
+}
+
+@layer components {
+  .brief-grid {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .brief-grid::before {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    content: "";
+    background-image:
+      linear-gradient(rgba(239, 230, 214, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(239, 230, 214, 0.04) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.65), transparent 92%);
+    pointer-events: none;
+  }
+
+  .brief-grid::after {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: "";
+    opacity: 0.2;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12) 0.5px, transparent 0.6px),
+      radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0.5px, transparent 0.6px);
+    background-size: 18px 18px;
+    pointer-events: none;
+  }
+
+  .paper-panel {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #151b20;
+    box-shadow:
+      0 18px 50px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-radius: 1.25rem;
+  }
+
+  .hero-panel {
+    border: 1px solid rgba(14, 19, 24, 0.14);
+    border-radius: 1.25rem;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  }
+
+  .light-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(14, 19, 24, 0.18);
+    border-radius: 999px;
+    padding: 0.4rem 0.72rem;
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.34);
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-editorial);
+    line-height: 1.06;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
