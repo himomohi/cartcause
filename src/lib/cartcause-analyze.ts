@@ -257,7 +257,11 @@ export function buildAnalyzeInput(request: AnalyzeRequest): string {
       oneLeakPerCandidate: true,
       useOnlyProvidedEvidenceIds: true,
     },
-    request,
+    request: {
+      store: request.store,
+      briefDate: request.briefDate,
+      candidates: request.candidates,
+    },
   })
 }
 

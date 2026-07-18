@@ -52,9 +52,13 @@ The web app uses Vite, React, TypeScript, Tailwind CSS v4, Motion, and Phosphor 
 
 The model never calculates the financial values shown in the interface. The server validates the deterministic candidate metrics before the call, and the model schema contains no money field. After the response, the server checks that every candidate appears exactly once, ranks are unique, and every evidence reference belongs to the correct candidate. Invalid references fail closed.
 
-The app uses a pseudonymous hashed safety identifier and sends no customer PII. A live API failure never disguises sample data as model output.
+The current public UI sends only fictional Morrow Supply data. The function converts the browser's random session ID into a pseudonymous hashed safety identifier and excludes the raw ID from the model input. A live API failure never disguises sample data as model output.
 
-The public deployment uses a request-scoped bring-your-own-key flow. A key is held only in React memory for the active tab, sent over HTTPS to the same-origin function, and never written to browser storage, logs, responses, or Vercel environment variables.
+The public deployment uses a request-scoped bring-your-own-key flow. A key is held in React memory for the active tab, sent over HTTPS to the same-origin function for one OpenAI request, and cleared from the form before the fetch starts. CartCause application code does not write it to browser storage, cookies, the JSON body, a database, responses, or Vercel environment variables. The browser, serverless function, network path, and OpenAI necessarily process it transiently, so we tell evaluators to use a dedicated restricted key and revoke it after testing.
+
+The file picker is preview-only: it displays a filename and size but does not read or upload file contents. The generic endpoint has bounded fields and strict validation, but it is not a PII redactor. Real customer data, credentials, payment data, and full exports must not be used in this prototype.
+
+CartCause sets `store: false`, which opts the request out of retrievable Responses application-state storage. It does not disable OpenAI's default abuse-monitoring logs. OpenAI states that API data is not used for training unless the API customer opts in, while abuse-monitoring data may generally be retained for up to 30 days under the project owner's data controls. The repository's detailed [security and data use guide](https://github.com/himomohi/cartcause/blob/master/docs/security-and-data.md) links the official policies and documents the complete request path.
 
 The editorial campaign visual was produced with the built-in ImageGen tool and integrated into the actual product experience.
 
@@ -90,14 +94,26 @@ The next step is a privacy-preserving import flow for normalized store exports, 
 
 ## Testing instructions
 
-1. Open the public app. No login is required.
-2. Review the clearly labeled Morrow Supply sample brief.
-3. Choose any ranked leak candidate to update the evidence and Fix Studio panels.
-4. For the optional live path, enter an OpenAI API key with GPT-5.6 access in `Bring your own key`, then select `Run live GPT-5.6 brief`. The key is cleared immediately after the request starts, or on refresh or `Clear key`.
-5. Approve a fix and confirm it appears in `Approved today`.
-6. Select `Copy implementation brief`.
+### Sample path — no key required
 
-The displayed financial values are fictional sample metrics. The live model response intentionally contains no monetary field.
+1. Open https://cartcause.vercel.app in a current desktop or mobile browser. No login is required.
+2. Confirm that the app identifies Morrow Supply and labels the brief and financial values as fictional sample data.
+3. Select each ranked leak candidate. Confirm that the Evidence and Fix Studio panels update to the same product.
+4. Verify that every cause includes confidence, visible evidence IDs, and a `What not to claim` boundary.
+5. Compare before/after copy, approve one fix, and confirm it appears in `Approved today`.
+6. Select `Copy implementation brief`, then use `Reset to sample brief`.
+
+### Optional live GPT-5.6 path
+
+7. Use a dedicated OpenAI project key with GPT-5.6 access, minimal permissions, and a low budget or usage alert. Do not use a shared or broadly privileged production key.
+8. Do not enter real customer PII, payment data, credentials, confidential text, or raw store exports. The public UI submits only fictional seeded data.
+9. Paste the key into `Bring your own key` and select `Run live GPT-5.6 brief` over the HTTPS deployment.
+10. Confirm that the key field clears as soon as the request starts. A retry intentionally requires re-entry.
+11. On success, confirm the live label appears and every model evidence reference still maps to the correct visible candidate.
+12. Confirm that the financial values remain the deterministic sample inputs; the model response contains no monetary field.
+13. Reset to sample mode, delete or revoke the demonstration key, and review the OpenAI project's usage.
+
+The upload control is preview-only and does not read or send file contents. A failed live request leaves the clearly labeled sample brief intact. See the public [security and data use guide](https://github.com/himomohi/cartcause/blob/master/docs/security-and-data.md) for the complete data map, OpenAI retention note, error guide, and key-exposure response steps.
 
 ## URLs to complete
 
@@ -121,6 +137,6 @@ Public repository: https://github.com/himomohi/cartcause
 
 Built during OpenAI Build Week with Codex, GPT-5.6, the OpenAI Responses API, Structured Outputs, React, TypeScript, Vite, Tailwind CSS, and Vercel.
 
-The public live path uses a temporary bring-your-own OpenAI API key. The key stays only in browser memory, is cleared when the request starts, and is never stored by CartCause.
+The optional live path uses a dedicated bring-your-own OpenAI API key. CartCause application code does not persist the key, clears it from the form when the request starts, and documents the transient browser, serverless, and provider handling in the repository security guide.
 
 Narration uses an AI-generated OpenAI voice.

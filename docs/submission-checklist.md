@@ -5,7 +5,9 @@
 - [ ] Public app is reachable without login
 - [ ] Fictional Morrow Supply sample works without private data
 - [ ] Live GPT-5.6 structured analysis succeeds
-- [ ] BYOK key clears on refresh and is absent from browser storage, logs, responses, and Vercel environment variables
+- [ ] BYOK key clears from React state and is absent from application-controlled browser storage, JSON bodies/responses, and Vercel environment variables
+- [ ] Public copy accurately discloses transient browser/function/provider handling and avoids unverifiable platform-log claims
+- [ ] Data-use guide explains `store: false`, OpenAI abuse monitoring, prohibited data, key revocation, and prototype limitations
 - [ ] Monetary metrics originate only from validated sample inputs
 - [ ] Every model evidence reference maps to the same visible candidate
 - [ ] Approve, reject, and copy implementation brief work

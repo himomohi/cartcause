@@ -69,7 +69,7 @@ The sample total is $1,652. These are fictional computed inputs for product demo
 5. Compare the current `true to size` claim with the proposed fit patch.
 6. Approve the product-copy fix and CX macro.
 7. Copy the `Approved today` implementation brief.
-8. Open the model-boundary note: arithmetic is deterministic, GPT-5.6 ranks evidence and drafts bounded fixes, and no customer PII is sent.
+8. Open the model-boundary note: arithmetic is deterministic, GPT-5.6 ranks evidence and drafts bounded fixes, and the fictional sample contains no customer PII.
 
 ## Meaningful GPT-5.6 role
 
@@ -100,10 +100,14 @@ The output schema contains no monetary field. The server validates candidate IDs
 - Customer names, emails, addresses, phone numbers, and full order records are never required.
 - The demo sends only aggregates, short redacted excerpts, and pseudonymous identifiers.
 - The OpenAI request uses `store: false`.
-- The public demo uses a request-scoped bring-your-own-key flow: the key stays in tab memory only until the live request starts, travels only over HTTPS, and is never persisted.
+- The public demo uses a request-scoped bring-your-own-key flow: the key stays in React memory until the live request starts, then travels over HTTPS through the CartCause function to OpenAI. Application code does not persist it, but the browser and infrastructure handle it transiently.
+- A random browser session ID is stored locally, hashed by the function for `safety_identifier`, and omitted from the model input.
+- `store: false` does not disable OpenAI's default abuse-monitoring retention; the key owner's API project data controls apply.
 - The model does not calculate or invent loss amounts.
 - Every causal statement is framed as a hypothesis with confidence and evidence.
 - A live API failure leaves the labeled sample brief intact and never masquerades as a successful model response.
+
+The current public UI uses fictional data only, and the file control is preview-only. Real-data use would require separate authentication, redaction, retention, logging, and compliance work. See [Security, API Key, and Data Use](security-and-data.md).
 
 ## Visual direction
 

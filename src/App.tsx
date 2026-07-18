@@ -178,9 +178,9 @@ export default function App() {
       ? true
       : isSecureApiKeyTransport(window.location.protocol, window.location.hostname);
   const keyMessage = !hasApiKey
-    ? "Enter a key to enable live mode. It stays in tab memory until you run, then is sent over HTTPS to OpenAI and cleared. Never stored."
+    ? "Enter a temporary, restricted key. It travels over HTTPS through CartCause's function to OpenAI only when you run, then clears from this form."
     : secureApiKeyTransport
-      ? "Held in tab memory only until the live request starts, then cleared immediately. Never written to browser storage or cookies."
+      ? "Ready for one request. The key is not written to localStorage or cookies, but your browser and the serverless function handle it transiently."
       : "Live key submission requires HTTPS outside localhost.";
   const liveButtonDisabled = liveState === "analyzing" || !secureApiKeyTransport;
 
@@ -453,8 +453,8 @@ export default function App() {
 
                   <p id="live-brief-key-hint" className="text-xs leading-5 text-[var(--ink-soft)]">
                     {hasApiKey
-                      ? "Your key is ready for one request and is not persisted."
-                      : "Select this button to focus the temporary key field; the key is sent only when you run."}
+                      ? "Your key is ready for one request and will clear from the form when it starts."
+                      : "Select this button to focus the key field. Sample mode needs no API key."}
                   </p>
 
                   <button
@@ -506,7 +506,7 @@ export default function App() {
                             Bring your own key
                           </p>
                           <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
-                            Use a temporary OpenAI project key you can revoke after this live request. CartCause does not keep it.
+                            Use a dedicated OpenAI project key you can revoke after the demo. Do not use sensitive customer data in this prototype.
                           </p>
                         </div>
                         <span className="light-chip">

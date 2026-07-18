@@ -24,7 +24,7 @@ Visual: click `Run live GPT-5.6 brief`, show analyzing state, then live success 
 
 Narration:
 
-> The public demo uses bring-your-own-key access. The key stays only in browser memory, is cleared as soon as the live request starts, and is never stored. The live endpoint uses the OpenAI Responses API with GPT-5.6 and strict Structured Outputs. GPT-5.6 ranks the likely causes, cites only provided evidence IDs, drafts bounded fixes, and states what we must not claim. The server validates those references before the result reaches the browser.
+> The public demo uses bring-your-own-key access. A dedicated key stays in the tab until the live request starts, then passes over HTTPS through the CartCause function to OpenAI and clears from the form. The live endpoint uses the OpenAI Responses API with GPT-5.6 and strict Structured Outputs. GPT-5.6 ranks the likely causes, cites only provided evidence IDs, drafts bounded fixes, and states what we must not claim. The server validates those references before the result reaches the browser.
 
 ## 1:07 to 1:24 | Evidence
 

@@ -24,7 +24,7 @@ Browser
 - Seeded fictional store data for a no-login public demo
 - Browser state for leak selection, live analysis, and approved fixes
 
-The client owns metric display, candidate selection, evidence navigation, approval state, implementation-brief copy, and the temporary BYOK field. The key exists only in React memory for the current tab, is sent in the `x-openai-api-key` request header, and is cleared from React state as soon as the live request begins.
+The client owns metric display, candidate selection, evidence navigation, approval state, implementation-brief copy, and the temporary BYOK field. The key exists in React memory for the current tab, is sent in the `x-openai-api-key` request header, and is cleared from React state as soon as the live request begins. A separate random pseudonymous session ID is persisted in `localStorage` for safety correlation; it is not the API key.
 
 ## Serverless endpoint
 
@@ -48,8 +48,8 @@ Server responsibilities:
 
 1. Reject non-POST methods, missing request keys, and invalid JSON.
 2. Validate counts, types, bounded strings, and identifier uniqueness.
-3. Instantiate the OpenAI client with the request-scoped key without persisting or logging it.
-4. Hash the client session into a privacy-preserving safety identifier.
+3. Instantiate the OpenAI client with the request-scoped key without persisting it or invoking application logging for it.
+4. Hash the client session into a pseudonymous safety identifier and omit the raw session ID from model input.
 5. Call `openai.responses.parse` with `gpt-5.6`.
 6. Use `zodTextFormat` for strict structured output.
 7. Validate that every candidate appears exactly once and ranks are unique.
@@ -102,14 +102,18 @@ The seeded brief is always labeled as sample data. A live failure never silently
 - The key is held only in React memory and is cleared as soon as a live request begins, on refresh, or on **Clear key**.
 - Browser storage, cookies, database storage, and Vercel environment variables are not used for the key.
 - The key is sent only from HTTPS origins, with localhost allowed for development.
-- The server uses the request header only to instantiate the OpenAI client; it never logs or returns the key.
+- The server uses the request header to instantiate a request-scoped OpenAI client. Repository code does not log or return the key, but browser, network, hosting, and provider infrastructure necessarily process it transiently.
 - The endpoint marks responses `Cache-Control: no-store` and `Pragma: no-cache`.
-- No customer PII is required by the contract.
+- The random pseudonymous browser session ID is stored in `localStorage`, sent to the function, hashed for `safety_identifier`, and excluded from the model prompt.
+- No customer PII is required by the current public UI. The generic API contract does not include automated PII detection or redaction.
 - Inputs are bounded and validated before the provider call.
 - HTML is never injected from model or evidence text.
 - The endpoint does not fetch user-provided URLs.
-- Logs exclude raw evidence, model prompts, and credentials.
-- The product does not write to a store or persist customer data.
+- Application code contains no logger call for raw evidence, model prompts, or credentials; deployment-provider logging behavior is outside the repository's guarantees.
+- The product does not write to a store or implement durable customer-data storage.
+- `store: false` opts out of retrievable Responses application-state storage, but OpenAI abuse-monitoring retention can still apply under the API project owner's data controls.
+
+The complete handling map, user cautions, and production-readiness gaps are documented in [Security, API Key, and Data Use](security-and-data.md).
 
 ## Deployment
 

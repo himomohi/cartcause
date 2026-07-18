@@ -8,7 +8,7 @@
 
 CartCause connects deterministic order and return metrics with the language hidden in reviews, support notes, return reasons, and product-page promises. GPT-5.6 ranks the likely causes, cites the evidence behind each hypothesis, and drafts the smallest product-page or CX changes an owner can approve today.
 
-The public demo uses a fictional store named **Morrow Supply**. Every order count, rate, and dollar value is explicitly sample data.
+The public demo uses a fictional store named **Morrow Supply**. Every order count, rate, and dollar value is explicitly sample data. Read the [security, API key, and data use guide](docs/security-and-data.md) before running the optional live analysis.
 
 ## Why CartCause
 
@@ -18,15 +18,36 @@ Revenue dashboards show what happened. Returns tools process what happened. Cart
 
 The product is intentionally not a chatbot, general analytics suite, return portal, or automatic storefront editor. It produces one evidence-linked morning brief and ends with an owner-approved implementation handoff.
 
-## Demo loop
+## How to use CartCause
 
-1. Open the Morrow Supply sample brief.
-2. Run a live GPT-5.6 analysis.
-3. Select a ranked leak candidate.
-4. Inspect the exact return, review, support, and PDP evidence IDs.
-5. Compare current copy with approval-ready fixes.
-6. Approve a product or CX change.
-7. Copy the implementation brief.
+### Explore the sample without an API key
+
+1. Open the [public app](https://cartcause.vercel.app). No login or API key is required.
+2. Confirm that the brief is labeled **Morrow Supply** and **sample data**.
+3. Select any ranked leak candidate in the left rail.
+4. Inspect the return, review, support, and product-page evidence IDs behind its hypothesis.
+5. Read the confidence level and **What not to claim** boundary.
+6. Compare the current copy with each proposal in **Fix Studio**.
+7. Approve or reject a fix. This changes browser state only; CartCause never edits a storefront.
+8. Review accepted changes in **Approved today**, then select **Copy implementation brief**.
+9. Select **Reset to sample brief** to restore the seeded analysis at any time.
+
+### Run the optional live GPT-5.6 brief
+
+1. Create a dedicated, restricted project key from the [OpenAI API keys page](https://platform.openai.com/api-keys). Use a low project budget or usage alert and plan to revoke the key after the demo.
+2. Use a trusted browser profile and the HTTPS deployment. Do not use a shared device, a broadly privileged key, or sensitive customer data.
+3. Paste the key into **Bring your own key**, then select **Run live GPT-5.6 brief**.
+4. The browser sends the fictional dataset and key to same-origin `/api/analyze`. The function validates the request and uses the key for one OpenAI request.
+5. The key field clears before the fetch starts. Re-entering the key is required for any intentional retry.
+6. When live mode succeeds, verify that every cited evidence ID belongs to the selected candidate and treat every cause as a hypothesis rather than proven causation.
+7. Approve only human-reviewed changes, copy the implementation brief if desired, and reset to sample mode.
+8. Delete or revoke the demonstration key, then review the OpenAI project's usage.
+
+### Understand the upload control
+
+**Add returns export** is preview-only. The current code displays the selected file's name and size but does not read, parse, upload, or include its contents in the live request.
+
+The [complete usage guide](docs/security-and-data.md#detailed-usage) includes a field-by-field data map, safe testing checklist, error explanations, incident steps, and production-readiness limits.
 
 ## GPT-5.6 integration
 
@@ -36,7 +57,7 @@ The serverless `/api/analyze` endpoint uses the OpenAI Responses API with:
 - medium reasoning effort
 - `store: false`
 - a request-scoped API key supplied by the user at run time
-- a privacy-preserving hashed `safety_identifier`
+- a pseudonymous hashed `safety_identifier`
 - Zod Structured Outputs through `zodTextFormat`
 
 GPT-5.6 does **not** calculate money, counts, or rates. The structured output schema contains no monetary field. The model returns one ranked analysis per candidate, a bounded cause hypothesis, confidence, evidence references, recommended fixes, and a `what_not_to_claim` guardrail.
@@ -50,14 +71,17 @@ The server performs a second semantic validation pass:
 
 The browser then merges the validated analysis with the original deterministic metrics.
 
+`store: false` opts this request out of retrievable Responses application-state storage. It does not disable OpenAI's default abuse-monitoring logs. OpenAI states that API data is not used for model training unless the API customer opts in, while abuse-monitoring data may generally be retained for up to 30 days. The key owner's project data controls govern that provider-side processing; see [OpenAI API data controls](https://platform.openai.com/docs/models/default-usage-policies-by-endpoint).
+
 ## Architecture
 
 ```text
 React browser app
   -> fictional candidate metrics and redacted evidence
   -> request-scoped API key held in tab memory
-  -> POST /api/analyze
+  -> HTTPS POST /api/analyze with key in a request header
   -> Zod request validation
+  -> pseudonymous session ID hashed and omitted from model input
   -> OpenAI Responses API with GPT-5.6
   -> strict structured output
   -> semantic reference validation
@@ -77,13 +101,16 @@ Stack:
 
 ## Trust boundary
 
-- The demo requires no customer names, emails, addresses, phone numbers, or full order logs.
-- Only bounded sample aggregates and short evidence excerpts reach the model.
-- The public demo uses bring-your-own-key access: the key stays in React memory, is sent only over HTTPS for the current request, and is cleared immediately after each live call starts.
-- CartCause never writes the key to browser storage, cookies, application logs, responses, or Vercel environment variables.
+- The current public UI sends only the fictional Morrow Supply dataset. It does not require customer names, emails, addresses, phone numbers, or full order logs.
+- The public demo uses bring-your-own-key access: the key stays in React memory, travels over HTTPS through CartCause's serverless function for one OpenAI request, and is cleared from the form before the fetch starts.
+- CartCause application code does not write the key to browser storage, cookies, the JSON body, a database, responses, or Vercel environment variables. The repository contains no application logger call for the key or request body.
+- A random pseudonymous session ID is stored in `localStorage` for safety-abuse correlation. The function hashes it for `safety_identifier`, and the raw value is omitted from the model input.
+- Browsers, extensions, developer tools, compromised devices, hosting/network infrastructure, and OpenAI may still observe data transiently while handling a live request. Clearing the form is not cryptographic memory erasure.
 - A failed live request leaves the clearly labeled sample brief intact.
 - CartCause does not write to a store, auto-publish changes, or persist customer data.
 - Model hypotheses always include confidence, evidence IDs, and a limit on what may be claimed.
+
+This is a public hackathon prototype, not a compliance-certified production service. Use only fictional, anonymized, aggregated, or carefully redacted data. Never submit customer PII, payment data, credentials, confidential exports, or content you are not authorized to process. OpenAI recommends keeping production API keys out of client-side environments; review its [API key safety guidance](https://help.openai.com/en/articles/5112595) and the project's [full security guide](docs/security-and-data.md).
 
 ## Local setup
 
@@ -97,7 +124,7 @@ bun install
 bun run dev
 ```
 
-The static sample experience runs without a key. In the deployed app, paste a key into the **Bring your own key** panel to exercise `/api/analyze`; it remains only in that tab's memory. Use a serverless-compatible local runtime to exercise the same endpoint locally.
+The static sample experience runs without a key. In the deployed app, paste a dedicated demonstration key into **Bring your own key** to exercise `/api/analyze`. The browser clears it from React state when the request starts, but the key is necessarily handled transiently by the browser, CartCause function, network path, and OpenAI. Use a serverless-compatible local runtime to exercise the same endpoint locally.
 
 The public deployment does not require a server-side `OPENAI_API_KEY` environment variable.
 
@@ -138,7 +165,7 @@ The human-directed decisions that shaped the product were:
 
 This repository is a new Build Week project. The public demo deliberately uses fictional data and excludes commerce-platform authentication, automatic publishing, billing, accounts, and durable customer storage.
 
-Additional product, architecture, research, demo, and submission notes are in [`docs/`](docs/).
+Additional product, architecture, research, demo, submission, and [security/data-use](docs/security-and-data.md) notes are in [`docs/`](docs/).
 
 ## License
 

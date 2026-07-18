@@ -97,7 +97,10 @@ describe('parseAnalyzeRequest', () => {
     expect(createSafetyIdentifier(parsed.data.clientSessionId)).toBe(
       createSafetyIdentifier(parsed.data.clientSessionId),
     )
-    expect(buildAnalyzeInput(parsed.data)).toContain('"oneLeakPerCandidate":true')
+    const modelInput = buildAnalyzeInput(parsed.data)
+    expect(modelInput).toContain('"oneLeakPerCandidate":true')
+    expect(modelInput).not.toContain(parsed.data.clientSessionId)
+    expect(modelInput).not.toContain('"clientSessionId"')
   })
 
   it('rejects duplicate candidate ids', () => {
