@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
-import { sampleCandidates, sampleStore } from '../data/cartCause'
+import { sampleCandidates, sampleStore } from '../data/cartCause.js'
 
 const MAX_SESSION_ID_LENGTH = 128
 const MAX_STORE_NAME_LENGTH = 120
