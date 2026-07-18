@@ -103,7 +103,7 @@ The displayed financial values are fictional sample metrics. The live model resp
 
 - Live app: https://cartcause.vercel.app
 - Public repository: https://github.com/himomohi/cartcause
-- Public YouTube demo:
+- Public YouTube demo: https://youtu.be/PDffqgURIDI
 - Primary Codex `/feedback` Session ID: 019f740e-fa9f-7e82-b43f-1491c42322f5
 
 ## YouTube metadata

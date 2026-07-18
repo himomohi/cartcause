@@ -2,7 +2,7 @@
 
 **Daily profit leak brief with approve-ready fixes for founder-led ecommerce stores.**
 
-[Open the live CartCause demo](https://cartcause.vercel.app)
+[Open the live CartCause demo](https://cartcause.vercel.app) · [Watch the 2-minute product demo](https://youtu.be/PDffqgURIDI)
 
 ![CartCause editorial concept](public/assets/cartcause-editorial.png)
 
