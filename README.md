@@ -2,7 +2,7 @@
 
 **One daily profit-leak brief with evidence-linked fixes for founder-led ecommerce stores.**
 
-[Open the live demo](https://cartcause.vercel.app) · [Watch the 2-minute walkthrough](https://youtu.be/PDffqgURIDI) · [View on Devpost](https://devpost.com/software/cartcause)
+[Open the live demo](https://cartcause.vercel.app) · [Watch the 95-second walkthrough](https://youtu.be/Vzl6FUYech8) · [View on Devpost](https://devpost.com/software/cartcause)
 
 ![CartCause editorial concept](public/assets/cartcause-editorial.png)
 

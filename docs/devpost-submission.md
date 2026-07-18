@@ -64,4 +64,4 @@ The next step is a read-only Shopify connection feeding the same daily brief, fo
 
 - Live demo: https://cartcause.vercel.app
 - Repository: https://github.com/himomohi/cartcause
-- Video walkthrough: https://youtu.be/PDffqgURIDI
+- Video walkthrough: https://youtu.be/Vzl6FUYech8
